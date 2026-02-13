@@ -23,7 +23,8 @@ struct AppState {
 }
 
 #[tauri::command]
-fn get_processes(state: tauri::State<AppState>, top_n: usize) -> Result<Vec<ProcessInfo>, String> {
+#[allow(non_snake_case)]
+fn get_processes(state: tauri::State<AppState>, topN: usize) -> Result<Vec<ProcessInfo>, String> {
     let mut sys = state.system.lock().map_err(|e| format!("Lock error: {}", e))?;
     
     // Refresh only what we need
@@ -36,7 +37,7 @@ fn get_processes(state: tauri::State<AppState>, top_n: usize) -> Result<Vec<Proc
     );
     
     // Pre-allocate with estimated capacity
-    let mut processes: Vec<ProcessInfo> = Vec::with_capacity(top_n.min(100));
+    let mut processes: Vec<ProcessInfo> = Vec::with_capacity(topN.min(100));
     
     for (pid, process) in sys.processes() {
         processes.push(ProcessInfo {
@@ -52,7 +53,7 @@ fn get_processes(state: tauri::State<AppState>, top_n: usize) -> Result<Vec<Proc
         b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap_or(std::cmp::Ordering::Equal)
     );
     
-    processes.truncate(top_n);
+    processes.truncate(topN);
     processes.shrink_to_fit(); // Free excess capacity
     
     Ok(processes)

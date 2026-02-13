@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
-  import { onMount, onDestroy } from "svelte";
-  import { t, type Language } from "$lib/i18n";
+  import { onMount, onDestroy } from 'svelte';
+  import { invoke } from '@tauri-apps/api/core';
+  import { t, type Language } from '$lib/i18n';
 
-  interface ProcessInfo {
+  interface Process {
     pid: number;
     name: string;
     cpu_usage: number;
@@ -12,8 +12,8 @@
 
   interface SystemStats {
     cpu_usage: number;
-    memory_used_mb: number;
     memory_total_mb: number;
+    memory_used_mb: number;
     memory_usage_percent: number;
   }
 
@@ -23,59 +23,56 @@
     topN: number;
   }
 
-  // Load config from localStorage
-  function loadConfig(): Config {
-    if (typeof localStorage === "undefined") {
-      return { lang: "ja", refreshInterval: 1000, topN: 20 };
-    }
+  let lang: Language = 'en';
+  let activeTab: 'processes' | 'resources' = 'processes';
+  let processes: Process[] = [];
+  let systemStats: SystemStats = {
+    cpu_usage: 0,
+    memory_total_mb: 0,
+    memory_used_mb: 0,
+    memory_usage_percent: 0
+  };
+  let searchFilter = '';
+  let refreshInterval = 1000;
+  let topN = 10;
+  let loading = false;
+  let error = '';
+  let cpuHistory: number[] = [];
+  let memoryHistory: number[] = [];
+  let intervalId: number | null = null;
+  let maxHistoryLength = 60;
+
+  function loadConfig() {
     try {
-      const stored = localStorage.getItem("tasklite_config");
-      if (stored) {
-        return { ...{ lang: "ja", refreshInterval: 1000, topN: 20 }, ...JSON.parse(stored) };
+      const saved = localStorage.getItem('tasklite-config');
+      if (saved) {
+        const config: Config = JSON.parse(saved);
+        lang = config.lang || 'en';
+        refreshInterval = config.refreshInterval || 1000;
+        topN = config.topN || 10;
       }
     } catch (e) {
-      console.error("Failed to load config:", e);
+      console.error('Failed to load config:', e);
     }
-    return { lang: "ja", refreshInterval: 1000, topN: 20 };
   }
 
-  function saveConfig(config: Config) {
-    if (typeof localStorage === "undefined") return;
+  function saveConfig() {
     try {
-      localStorage.setItem("tasklite_config", JSON.stringify(config));
+      const config: Config = { lang, refreshInterval, topN };
+      localStorage.setItem('tasklite-config', JSON.stringify(config));
     } catch (e) {
-      console.error("Failed to save config:", e);
+      console.error('Failed to save config:', e);
     }
   }
-
-  const config = loadConfig();
-  let lang = $state<Language>(config.lang);
-  let activeTab = $state<"processes" | "resources">("processes");
-  let processes = $state<ProcessInfo[]>([]);
-  let systemStats = $state<SystemStats | null>(null);
-  let searchFilter = $state("");
-  let refreshInterval = $state(config.refreshInterval);
-  let topN = $state(config.topN);
-  let intervalId: number | null = null;
-  let loading = $state(true);
-  let error = $state<string | null>(null);
-
-  let cpuHistory = $state<number[]>([]);
-  let memoryHistory = $state<number[]>([]);
-  const MAX_HISTORY = 60;
-
-  // Save config when changed
-  $effect(() => {
-    saveConfig({ lang, refreshInterval, topN });
-  });
 
   async function fetchProcesses() {
     try {
-      error = null;
-      processes = await invoke<ProcessInfo[]>("get_processes", { topN });
-    } catch (err) {
-      error = String(err);
-      console.error("Failed to fetch processes:", err);
+      loading = true;
+      error = '';
+      processes = await invoke<Process[]>('get_processes', { topN });
+    } catch (e) {
+      error = String(e);
+      console.error('Failed to fetch processes:', e);
     } finally {
       loading = false;
     }
@@ -83,347 +80,309 @@
 
   async function fetchSystemStats() {
     try {
-      const stats = await invoke<SystemStats>("get_system_stats");
-      systemStats = stats;
-      
-      cpuHistory = [...cpuHistory, stats.cpu_usage].slice(-MAX_HISTORY);
-      memoryHistory = [...memoryHistory, stats.memory_usage_percent].slice(-MAX_HISTORY);
-    } catch (err) {
-      console.error("Failed to fetch system stats:", err);
+      systemStats = await invoke<SystemStats>('get_system_stats');
+      cpuHistory = [...cpuHistory, systemStats.cpu_usage].slice(-maxHistoryLength);
+      memoryHistory = [...memoryHistory, systemStats.memory_usage_percent].slice(-maxHistoryLength);
+    } catch (e) {
+      console.error('Failed to fetch system stats:', e);
     }
   }
 
   async function killProcess(pid: number, name: string) {
-    if (!confirm(t(lang, "dialogs.killConfirm", { name, pid }))) {
+    if (!confirm(t(lang, 'dialogs.killConfirm', { name, pid }))) {
       return;
     }
-    
+
     try {
-      await invoke("kill_process", { pid });
+      await invoke('kill_process', { pid });
+      alert(t(lang, 'dialogs.killSuccess'));
       await fetchProcesses();
-    } catch (err) {
-      alert(t(lang, "dialogs.killFailed", { error: String(err) }));
+    } catch (e) {
+      alert(t(lang, 'dialogs.killFailed', { error: String(e) }));
     }
   }
 
   function startRefresh() {
-    if (intervalId) clearInterval(intervalId);
+    if (intervalId !== null) {
+      clearInterval(intervalId);
+    }
     
     fetchProcesses();
     fetchSystemStats();
     
     intervalId = window.setInterval(() => {
-      if (activeTab === "processes") {
-        fetchProcesses();
-      }
+      fetchProcesses();
       fetchSystemStats();
     }, refreshInterval);
   }
 
-  // Keyboard shortcuts
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.ctrlKey || event.altKey || event.metaKey) return;
-    
-    switch (event.key) {
-      case "F1":
-        event.preventDefault();
-        activeTab = "processes";
-        break;
-      case "F2":
-        event.preventDefault();
-        activeTab = "resources";
-        break;
-      case "F3":
-        event.preventDefault();
-        document.querySelector<HTMLInputElement>(".search-bar input")?.focus();
-        break;
-      case "F5":
-        event.preventDefault();
-        startRefresh();
-        break;
-      case "F10":
-        event.preventDefault();
-        if (confirm(t(lang, "dialogs.quitConfirm"))) {
-          window.close();
-        }
-        break;
+  function handleKeyboard(e: KeyboardEvent) {
+    if (e.key === 'F1') {
+      e.preventDefault();
+      alert(t(lang, 'title') + ' - ' + t(lang, 'footer.f1'));
+    } else if (e.key === 'F2') {
+      e.preventDefault();
+      activeTab = 'processes';
+    } else if (e.key === 'F3') {
+      e.preventDefault();
+      document.getElementById('search-input')?.focus();
+    } else if (e.key === 'F5') {
+      e.preventDefault();
+      fetchProcesses();
+      fetchSystemStats();
+    } else if (e.key === 'F9') {
+      e.preventDefault();
+      if (filteredProcesses.length > 0) {
+        killProcess(filteredProcesses[0].pid, filteredProcesses[0].name);
+      }
+    } else if (e.key === 'F10') {
+      e.preventDefault();
+      if (confirm(t(lang, 'dialogs.quitConfirm'))) {
+        window.close();
+      }
     }
+  }
+
+  function getBarColor(value: number): string {
+    if (value < 50) return '#50fa7b';
+    if (value < 75) return '#f1fa8c';
+    if (value < 90) return '#ffb86c';
+    return '#ff5555';
+  }
+
+  function formatBar(value: number, width: number = 20): string {
+    const filled = Math.round((value / 100) * width);
+    return '█'.repeat(filled) + '░'.repeat(width - filled);
+  }
+
+  function formatMemory(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+
+  $: filteredProcesses = processes.filter(p => 
+    p.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    p.pid.toString().includes(searchFilter)
+  );
+
+  $: {
+    lang;
+    refreshInterval;
+    topN;
+    saveConfig();
+  }
+
+  $: if (refreshInterval) {
+    startRefresh();
   }
 
   onMount(() => {
-    window.addEventListener("keydown", handleKeyDown);
+    loadConfig();
     startRefresh();
-  });
-
-  $effect(() => {
-    startRefresh();
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
   });
 
   onDestroy(() => {
-    if (intervalId) clearInterval(intervalId);
-    window.removeEventListener("keydown", handleKeyDown);
+    if (intervalId !== null) {
+      clearInterval(intervalId);
+    }
   });
-
-  let filteredProcesses = $derived(
-    processes.filter(p => 
-      p.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      p.pid.toString().includes(searchFilter)
-    )
-  );
-
-  function getBarColor(percent: number, type: "cpu" | "memory"): string {
-    if (type === "cpu") {
-      if (percent < 30) return "#50fa7b";
-      if (percent < 60) return "#f1fa8c";
-      if (percent < 80) return "#ffb86c";
-      return "#ff5555";
-    } else {
-      if (percent < 50) return "#50fa7b";
-      if (percent < 70) return "#f1fa8c";
-      if (percent < 90) return "#ffb86c";
-      return "#ff5555";
-    }
-  }
-
-  function formatBar(percent: number, width: number = 20): string {
-    const filled = Math.round((percent / 100) * width);
-    const empty = width - filled;
-    return "█".repeat(filled) + "░".repeat(empty);
-  }
-
-  function formatMemory(mb: number): string {
-    if (mb >= 1024) {
-      return `${(mb / 1024).toFixed(1)}GB`;
-    }
-    return `${mb.toFixed(0)}MB`;
-  }
 </script>
 
-<svelte:window onkeydown={handleKeyDown} />
+<svelte:window on:keydown={handleKeyboard} />
 
-<main>
+<div class="container">
   <header>
-    <div class="header-left">
-      <h1>{t(lang, "title")}</h1>
-      <div class="lang-switch">
-        <button 
-          class:active={lang === "ja"}
-          onclick={() => lang = "ja"}
-        >日本語</button>
-        <button 
-          class:active={lang === "en"}
-          onclick={() => lang = "en"}
-        >English</button>
-      </div>
-    </div>
-    
-    <div class="system-overview">
-      <div class="meter-group">
-        <div class="meter-label">{t(lang, "resources.cpu")}</div>
-        <div class="meter-bar">
-          <div 
-            class="meter-fill" 
-            style="width: {systemStats?.cpu_usage ?? 0}%; background-color: {getBarColor(systemStats?.cpu_usage ?? 0, 'cpu')}"
-          ></div>
+    <h1>{t(lang, 'title')}</h1>
+    <div class="header-controls">
+      <select bind:value={lang} class="lang-select">
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+      </select>
+      <div class="system-overview">
+        <div class="meter">
+          <span class="meter-label">{t(lang, 'resources.cpu')}</span>
+          <div class="meter-bar">
+            <div 
+              class="meter-fill" 
+              style="width: {systemStats.cpu_usage}%; background-color: {getBarColor(systemStats.cpu_usage)}"
+            ></div>
+          </div>
+          <span class="meter-value">{systemStats.cpu_usage.toFixed(1)}%</span>
         </div>
-        <div class="meter-value">{(systemStats?.cpu_usage ?? 0).toFixed(1)}%</div>
-      </div>
-      
-      <div class="meter-group">
-        <div class="meter-label">{t(lang, "resources.memory")}</div>
-        <div class="meter-bar">
-          <div 
-            class="meter-fill" 
-            style="width: {systemStats?.memory_usage_percent ?? 0}%; background-color: {getBarColor(systemStats?.memory_usage_percent ?? 0, 'memory')}"
-          ></div>
-        </div>
-        <div class="meter-value">
-          {formatMemory(systemStats?.memory_used_mb ?? 0)} / {formatMemory(systemStats?.memory_total_mb ?? 0)}
+        <div class="meter">
+          <span class="meter-label">{t(lang, 'resources.memory')}</span>
+          <div class="meter-bar">
+            <div 
+              class="meter-fill" 
+              style="width: {systemStats.memory_usage_percent}%; background-color: {getBarColor(systemStats.memory_usage_percent)}"
+            ></div>
+          </div>
+          <span class="meter-value">{systemStats.memory_usage_percent.toFixed(1)}%</span>
         </div>
       </div>
     </div>
   </header>
 
-  <div class="tabs">
+  <nav class="tabs">
     <button 
-      class:active={activeTab === "processes"}
-      onclick={() => activeTab = "processes"}
+      class:active={activeTab === 'processes'} 
+      on:click={() => activeTab = 'processes'}
     >
-      F1 {t(lang, "tabs.processes")}
+      {t(lang, 'tabs.processes')}
     </button>
     <button 
-      class:active={activeTab === "resources"}
-      onclick={() => activeTab = "resources"}
+      class:active={activeTab === 'resources'} 
+      on:click={() => activeTab = 'resources'}
     >
-      F2 {t(lang, "tabs.resources")}
+      {t(lang, 'tabs.resources')}
     </button>
-    
-    <div class="tab-controls">
+  </nav>
+
+  <div class="controls">
+    {#if activeTab === 'processes'}
+      <input 
+        id="search-input"
+        type="text" 
+        bind:value={searchFilter} 
+        placeholder={t(lang, 'processTable.search')}
+        class="search-input"
+      />
+    {/if}
+    <div class="settings">
       <label>
-        {t(lang, "settings.interval")}:
-        <input 
-          type="number" 
-          bind:value={refreshInterval} 
-          min="1000" 
-          max="5000" 
-          step="500"
-          onchange={() => startRefresh()}
-        />
-        {t(lang, "settings.ms")}
+        {t(lang, 'settings.interval')}:
+        <input type="number" bind:value={refreshInterval} min="100" step="100" class="number-input" />
+        {t(lang, 'settings.ms')}
       </label>
       <label>
-        {t(lang, "settings.topN")}:
-        <input 
-          type="number" 
-          bind:value={topN} 
-          min="5" 
-          max="100" 
-          step="5"
-        />
+        {t(lang, 'settings.topN')}:
+        <input type="number" bind:value={topN} min="5" max="100" class="number-input" />
       </label>
     </div>
   </div>
 
-  {#if loading && processes.length === 0}
-    <div class="content center-message">
-      <div class="loading-spinner"></div>
-      <p>{t(lang, "messages.loading")}</p>
-    </div>
-  {:else if error && processes.length === 0}
-    <div class="content center-message error-message">
-      <p>{t(lang, "messages.error")}</p>
-      <p class="error-detail">{error}</p>
-      <button onclick={() => { error = null; startRefresh(); }}>
-        {t(lang, "messages.retry")}
-      </button>
-    </div>
-  {:else if activeTab === "processes"}
-    <div class="content">
-      <div class="search-bar">
-        <input 
-          type="text" 
-          placeholder={t(lang, "processTable.search")}
-          bind:value={searchFilter}
-        />
+  <main>
+    {#if loading && processes.length === 0}
+      <div class="message">{t(lang, 'messages.loading')}</div>
+    {:else if error}
+      <div class="message error">
+        <p>{t(lang, 'messages.error')}: {error}</p>
+        <button on:click={fetchProcesses}>{t(lang, 'messages.retry')}</button>
       </div>
-      
+    {:else if activeTab === 'processes'}
       {#if filteredProcesses.length === 0}
-        <div class="empty-state">
-          <p>{t(lang, "messages.noProcesses")}</p>
-        </div>
+        <div class="message">{t(lang, 'messages.noProcesses')}</div>
       {:else}
-        <div class="process-table">
-          <div class="table-header">
-            <div class="col-pid">{t(lang, "processTable.pid")}</div>
-            <div class="col-name">{t(lang, "processTable.name")}</div>
-            <div class="col-cpu">{t(lang, "processTable.cpu")}</div>
-            <div class="col-memory">{t(lang, "processTable.memory")}</div>
-            <div class="col-action">{t(lang, "processTable.action")}</div>
-          </div>
-          
-          <div class="table-body">
+        <table class="process-table">
+          <thead>
+            <tr>
+              <th>{t(lang, 'processTable.pid')}</th>
+              <th>{t(lang, 'processTable.name')}</th>
+              <th>{t(lang, 'processTable.cpu')}</th>
+              <th>{t(lang, 'processTable.memory')}</th>
+              <th>{t(lang, 'processTable.action')}</th>
+            </tr>
+          </thead>
+          <tbody>
             {#each filteredProcesses as process (process.pid)}
-              <div class="table-row">
-                <div class="col-pid">{process.pid}</div>
-                <div class="col-name" title={process.name}>{process.name}</div>
-                <div class="col-cpu">
-                  <span class="cpu-bar" style="color: {getBarColor(process.cpu_usage, 'cpu')}">
-                    {formatBar(process.cpu_usage, 10)}
+              <tr>
+                <td>{process.pid}</td>
+                <td class="process-name">{process.name}</td>
+                <td>
+                  <span class="bar" style="color: {getBarColor(process.cpu_usage)}">
+                    {formatBar(process.cpu_usage, 15)}
                   </span>
-                  <span class="cpu-value">{process.cpu_usage.toFixed(1)}%</span>
-                </div>
-                <div class="col-memory">{formatMemory(process.memory_mb)}</div>
-                <div class="col-action">
+                  <span class="value">{process.cpu_usage.toFixed(1)}%</span>
+                </td>
+                <td>
+                  <span class="bar" style="color: {getBarColor((process.memory_mb / systemStats.memory_total_mb) * 100)}">
+                    {formatBar((process.memory_mb / systemStats.memory_total_mb) * 100, 15)}
+                  </span>
+                  <span class="value">{formatMemory(process.memory_mb)}</span>
+                </td>
+                <td>
                   <button 
-                    class="kill-btn"
-                    onclick={() => killProcess(process.pid, process.name)}
+                    class="kill-btn" 
+                    on:click={() => killProcess(process.pid, process.name)}
                   >
-                    {t(lang, "processTable.kill")}
+                    {t(lang, 'processTable.kill')}
                   </button>
-                </div>
-              </div>
+                </td>
+              </tr>
             {/each}
-          </div>
-        </div>
+          </tbody>
+        </table>
       {/if}
-    </div>
-  {:else}
-    <div class="content resources-content">
-      <div class="chart-grid">
-        <div class="chart-panel">
-          <div class="chart-header">
-            <h3>{t(lang, "resources.cpu")} - {t(lang, "resources.history")} (60s)</h3>
-            <span class="chart-value" style="color: {getBarColor(systemStats?.cpu_usage ?? 0, 'cpu')}">
-              {(systemStats?.cpu_usage ?? 0).toFixed(1)}%
-            </span>
+    {:else if activeTab === 'resources'}
+      <div class="resources">
+        <div class="resource-card">
+          <h3>{t(lang, 'resources.cpu')}</h3>
+          <div class="big-meter">
+            <div class="big-meter-bar">
+              <div 
+                class="big-meter-fill" 
+                style="width: {systemStats.cpu_usage}%; background-color: {getBarColor(systemStats.cpu_usage)}"
+              ></div>
+            </div>
+            <div class="big-meter-value">{systemStats.cpu_usage.toFixed(2)}%</div>
           </div>
-          <svg viewBox="0 0 600 100" class="chart">
-            <defs>
-              <linearGradient id="cpuGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:#50fa7b;stop-opacity:0.3" />
-                <stop offset="100%" style="stop-color:#50fa7b;stop-opacity:0.05" />
-              </linearGradient>
-            </defs>
-            
-            {#if cpuHistory.length > 0}
-              <polyline
-                points={cpuHistory.map((v, i) => `${i * (600 / MAX_HISTORY)},${100 - v}`).join(' ')}
-                fill="url(#cpuGradient)"
-                stroke="#50fa7b"
-                stroke-width="2"
-              />
-            {/if}
-            
-            <line x1="0" y1="25" x2="600" y2="25" stroke="#44475a" stroke-width="1" opacity="0.3" />
-            <line x1="0" y1="50" x2="600" y2="50" stroke="#44475a" stroke-width="1" opacity="0.3" />
-            <line x1="0" y1="75" x2="600" y2="75" stroke="#44475a" stroke-width="1" opacity="0.3" />
-          </svg>
+          <div class="chart">
+            <div class="chart-title">{t(lang, 'resources.history')}</div>
+            <div class="chart-bars">
+              {#each cpuHistory as value}
+                <div 
+                  class="chart-bar" 
+                  style="height: {value}%; background-color: {getBarColor(value)}"
+                  title="{value.toFixed(1)}%"
+                ></div>
+              {/each}
+            </div>
+          </div>
         </div>
 
-        <div class="chart-panel">
-          <div class="chart-header">
-            <h3>{t(lang, "resources.memory")} - {t(lang, "resources.history")} (60s)</h3>
-            <span class="chart-value" style="color: {getBarColor(systemStats?.memory_usage_percent ?? 0, 'memory')}">
-              {(systemStats?.memory_usage_percent ?? 0).toFixed(1)}%
-            </span>
+        <div class="resource-card">
+          <h3>{t(lang, 'resources.memory')}</h3>
+          <div class="big-meter">
+            <div class="big-meter-bar">
+              <div 
+                class="big-meter-fill" 
+                style="width: {systemStats.memory_usage_percent}%; background-color: {getBarColor(systemStats.memory_usage_percent)}"
+              ></div>
+            </div>
+            <div class="big-meter-value">{systemStats.memory_usage_percent.toFixed(2)}%</div>
           </div>
-          <svg viewBox="0 0 600 100" class="chart">
-            <defs>
-              <linearGradient id="memGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:#bd93f9;stop-opacity:0.3" />
-                <stop offset="100%" style="stop-color:#bd93f9;stop-opacity:0.05" />
-              </linearGradient>
-            </defs>
-            
-            {#if memoryHistory.length > 0}
-              <polyline
-                points={memoryHistory.map((v, i) => `${i * (600 / MAX_HISTORY)},${100 - v}`).join(' ')}
-                fill="url(#memGradient)"
-                stroke="#bd93f9"
-                stroke-width="2"
-              />
-            {/if}
-            
-            <line x1="0" y1="25" x2="600" y2="25" stroke="#44475a" stroke-width="1" opacity="0.3" />
-            <line x1="0" y1="50" x2="600" y2="50" stroke="#44475a" stroke-width="1" opacity="0.3" />
-            <line x1="0" y1="75" x2="600" y2="75" stroke="#44475a" stroke-width="1" opacity="0.3" />
-          </svg>
+          <div class="stats">
+            <div>{t(lang, 'resources.used')}: {formatMemory(systemStats.memory_used_mb)}</div>
+            <div>{t(lang, 'resources.total')}: {formatMemory(systemStats.memory_total_mb)}</div>
+          </div>
+          <div class="chart">
+            <div class="chart-title">{t(lang, 'resources.history')}</div>
+            <div class="chart-bars">
+              {#each memoryHistory as value}
+                <div 
+                  class="chart-bar" 
+                  style="height: {value}%; background-color: {getBarColor(value)}"
+                  title="{value.toFixed(1)}%"
+                ></div>
+              {/each}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  {/if}
+    {/if}
+  </main>
 
   <footer>
-    <div class="footer-key"><span>F1</span> {t(lang, "tabs.processes")}</div>
-    <div class="footer-key"><span>F2</span> {t(lang, "tabs.resources")}</div>
-    <div class="footer-key"><span>F3</span> {t(lang, "footer.f3")}</div>
-    <div class="footer-key"><span>F5</span> {t(lang, "footer.f5")}</div>
-    <div class="footer-key"><span>F10</span> {t(lang, "footer.f10")}</div>
+    <span>F1: {t(lang, 'footer.f1')}</span>
+    <span>F2: {t(lang, 'footer.f2')}</span>
+    <span>F3: {t(lang, 'footer.f3')}</span>
+    <span>F5: {t(lang, 'footer.f5')}</span>
+    <span>F9: {t(lang, 'footer.f9')}</span>
+    <span>F10: {t(lang, 'footer.f10')}</span>
   </footer>
-</main>
+</div>
 
 <style>
   :global(body) {
@@ -435,1082 +394,370 @@
     overflow: hidden;
   }
 
-  main {
-    height: 100vh;
+  .container {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    height: 100vh;
+    max-height: 100vh;
   }
 
   header {
-    background: linear-gradient(180deg, #44475a 0%, #383a47 100%);
-    padding: 12px 16px;
-    border-bottom: 2px solid #6272a4;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-  }
-
-  .header-left {
-    display: flex;
     align-items: center;
-    gap: 20px;
+    padding: 0.75rem 1rem;
+    background-color: #44475a;
+    border-bottom: 2px solid #6272a4;
   }
 
   h1 {
     margin: 0;
-    font-size: 20px;
-    font-weight: 700;
-    color: #8be9fd;
-    text-shadow: 0 0 10px rgba(139, 233, 253, 0.5);
+    font-size: 1.5rem;
+    color: #bd93f9;
   }
 
-  .lang-switch {
+  .header-controls {
     display: flex;
-    gap: 4px;
-    background: #282a36;
-    border-radius: 4px;
-    padding: 2px;
+    align-items: center;
+    gap: 1rem;
   }
 
-  .lang-switch button {
-    background: transparent;
-    border: none;
-    color: #6272a4;
-    padding: 4px 10px;
-    font-size: 11px;
-    cursor: pointer;
-    border-radius: 3px;
-    font-family: inherit;
-  }
-
-  .lang-switch button.active {
-    background: #6272a4;
+  .lang-select {
+    padding: 0.4rem 0.6rem;
+    background-color: #282a36;
     color: #f8f8f2;
+    border: 1px solid #6272a4;
+    border-radius: 4px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .lang-select:hover {
+    border-color: #bd93f9;
   }
 
   .system-overview {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 400px;
+    gap: 1rem;
   }
 
-  .meter-group {
-    display: grid;
-    grid-template-columns: 80px 1fr 120px;
-    gap: 12px;
+  .meter {
+    display: flex;
     align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
   }
 
   .meter-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #f1fa8c;
-    text-align: right;
+    color: #8be9fd;
+    min-width: 80px;
   }
 
   .meter-bar {
+    width: 100px;
     height: 16px;
-    background: #21222c;
-    border-radius: 3px;
+    background-color: #282a36;
+    border: 1px solid #6272a4;
+    border-radius: 2px;
     overflow: hidden;
-    border: 1px solid #44475a;
   }
 
   .meter-fill {
     height: 100%;
     transition: width 0.3s ease;
-    box-shadow: 0 0 8px currentColor;
   }
 
   .meter-value {
-    font-size: 12px;
-    font-weight: 600;
-    color: #f8f8f2;
-    text-align: left;
+    min-width: 45px;
+    text-align: right;
+    color: #f1fa8c;
   }
 
   .tabs {
     display: flex;
-    background: #21222c;
-    border-bottom: 1px solid #44475a;
-    padding: 0 16px;
-    justify-content: space-between;
-    align-items: center;
+    background-color: #44475a;
+    border-bottom: 1px solid #6272a4;
   }
 
   .tabs button {
-    padding: 10px 20px;
-    background: transparent;
+    padding: 0.75rem 1.5rem;
+    background: none;
     border: none;
-    color: #6272a4;
+    color: #f8f8f2;
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
     font-family: inherit;
-    border-bottom: 3px solid transparent;
+    font-size: 1rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .tabs button:hover {
+    background-color: #282a36;
+    color: #bd93f9;
   }
 
   .tabs button.active {
-    color: #50fa7b;
-    border-bottom-color: #50fa7b;
+    border-bottom-color: #bd93f9;
+    color: #bd93f9;
   }
 
-  .tab-controls {
+  .controls {
     display: flex;
-    gap: 20px;
-    font-size: 11px;
-  }
-
-  .tab-controls label {
-    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 6px;
-    color: #f8f8f2;
+    padding: 0.75rem 1rem;
+    background-color: #44475a;
+    border-bottom: 1px solid #6272a4;
+    gap: 1rem;
   }
 
-  .tab-controls input {
-    width: 60px;
-    padding: 4px 6px;
-    background: #282a36;
-    border: 1px solid #44475a;
+  .search-input {
+    flex: 1;
+    max-width: 400px;
+    padding: 0.5rem;
+    background-color: #282a36;
+    border: 1px solid #6272a4;
+    border-radius: 4px;
     color: #f8f8f2;
-    border-radius: 3px;
-    font-size: 11px;
     font-family: inherit;
   }
 
-  .content {
-    flex: 1;
-    overflow: auto;
-    padding: 16px;
-    background: #282a36;
+  .search-input:focus {
+    outline: none;
+    border-color: #bd93f9;
   }
 
-  .center-message {
+  .settings {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .settings label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #8be9fd;
+  }
+
+  .number-input {
+    width: 70px;
+    padding: 0.4rem;
+    background-color: #282a36;
+    border: 1px solid #6272a4;
+    border-radius: 4px;
+    color: #f8f8f2;
+    font-family: inherit;
+  }
+
+  .number-input:focus {
+    outline: none;
+    border-color: #bd93f9;
+  }
+
+  main {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem;
+  }
+
+  .message {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
+    height: 100%;
+    font-size: 1.2rem;
+    color: #8be9fd;
   }
 
-  .center-message p {
-    margin: 0;
-    font-size: 14px;
+  .message.error {
+    color: #ff5555;
+  }
+
+  .message button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #bd93f9;
+    border: none;
+    border-radius: 4px;
+    color: #282a36;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .message button:hover {
+    background-color: #ff79c6;
+  }
+
+  .process-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .process-table th {
+    text-align: left;
+    padding: 0.75rem;
+    background-color: #44475a;
+    color: #bd93f9;
+    border-bottom: 2px solid #6272a4;
+    position: sticky;
+    top: 0;
+  }
+
+  .process-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #44475a;
+  }
+
+  .process-table tbody tr:hover {
+    background-color: #44475a;
+  }
+
+  .process-name {
+    color: #8be9fd;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bar {
+    font-family: monospace;
+    margin-right: 0.5rem;
+    letter-spacing: -1px;
+  }
+
+  .value {
     color: #f1fa8c;
   }
 
-  .error-message .error-detail {
-    font-size: 12px;
-    color: #ff5555;
-    max-width: 400px;
+  .kill-btn {
+    padding: 0.3rem 0.8rem;
+    background-color: #ff5555;
+    border: none;
+    border-radius: 4px;
+    color: #282a36;
+    font-family: inherit;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .kill-btn:hover {
+    background-color: #ff6e6e;
+  }
+
+  .resources {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .resource-card {
+    background-color: #44475a;
+    border: 1px solid #6272a4;
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+
+  .resource-card h3 {
+    margin: 0 0 1rem 0;
+    color: #bd93f9;
+    font-size: 1.2rem;
+  }
+
+  .big-meter {
+    margin-bottom: 1.5rem;
+  }
+
+  .big-meter-bar {
+    width: 100%;
+    height: 30px;
+    background-color: #282a36;
+    border: 2px solid #6272a4;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+
+  .big-meter-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+
+  .big-meter-value {
+    font-size: 1.5rem;
+    color: #f1fa8c;
     text-align: center;
   }
 
-  .error-message button {
-    padding: 8px 16px;
-    background: #50fa7b;
-    border: none;
-    color: #282a36;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: inherit;
-  }
-
-  .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #44475a;
-    border-top-color: #8be9fd;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .empty-state {
+  .stats {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    color: #6272a4;
-    font-size: 14px;
-  }
-
-  .search-bar {
-    margin-bottom: 12px;
-  }
-
-  .search-bar input {
-    width: 100%;
-    padding: 8px 12px;
-    background: #21222c;
-    border: 1px solid #44475a;
-    color: #f8f8f2;
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: inherit;
-  }
-
-  .search-bar input:focus {
-    outline: none;
-    border-color: #8be9fd;
-    box-shadow: 0 0 0 2px rgba(139, 233, 253, 0.2);
-  }
-
-  .process-table {
-    background: #21222c;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid #44475a;
-  }
-
-  .table-header {
-    display: grid;
-    grid-template-columns: 80px 1fr 180px 120px 100px;
-    gap: 12px;
-    padding: 10px 16px;
-    background: #383a47;
-    font-weight: 700;
-    font-size: 12px;
-    color: #f1fa8c;
-    border-bottom: 2px solid #6272a4;
-  }
-
-  .table-body {
-    max-height: calc(100vh - 300px);
-    overflow-y: auto;
-  }
-
-  .table-row {
-    display: grid;
-    grid-template-columns: 80px 1fr 180px 120px 100px;
-    gap: 12px;
-    padding: 8px 16px;
-    font-size: 12px;
-    border-bottom: 1px solid #44475a;
-  }
-
-  .table-row:hover {
-    background: #383a47;
-  }
-
-  .col-pid {
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
     color: #8be9fd;
-    font-weight: 600;
-  }
-
-  .col-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #f8f8f2;
-  }
-
-  .col-cpu {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .cpu-bar {
-    font-size: 10px;
-    letter-spacing: -1px;
-    font-weight: 700;
-  }
-
-  .cpu-value {
-    color: #f8f8f2;
-    font-weight: 600;
-  }
-
-  .col-memory {
-    color: #bd93f9;
-    font-weight: 600;
-  }
-
-  .kill-btn {
-    padding: 4px 12px;
-    background: #ff5555;
-    border: none;
-    color: #f8f8f2;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 600;
-    font-family: inherit;
-  }
-
-  .kill-btn:hover {
-    background: #ff6e6e;
-    box-shadow: 0 0 8px rgba(255, 85, 85, 0.5);
-  }
-
-  .resources-content {
-    padding: 20px;
-  }
-
-  .chart-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-
-  .chart-panel {
-    background: #21222c;
-    border: 1px solid #44475a;
-    border-radius: 6px;
-    padding: 16px;
-  }
-
-  .chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-
-  .chart-header h3 {
-    margin: 0;
-    font-size: 13px;
-    color: #f1fa8c;
-    font-weight: 600;
-  }
-
-  .chart-value {
-    font-size: 18px;
-    font-weight: 700;
-    text-shadow: 0 0 10px currentColor;
   }
 
   .chart {
-    width: 100%;
-    height: 150px;
-    background: #282a36;
-    border-radius: 4px;
-    border: 1px solid #44475a;
+    margin-top: 1rem;
   }
 
-  footer {
+  .chart-title {
+    font-size: 0.9rem;
+    color: #8be9fd;
+    margin-bottom: 0.5rem;
+  }
+
+  .chart-bars {
     display: flex;
-    gap: 8px;
-    padding: 8px 16px;
-    background: #21222c;
-    border-top: 1px solid #44475a;
-    font-size: 11px;
-  }
-
-  .footer-key {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #f8f8f2;
-  }
-
-  .footer-key span {
-    background: #44475a;
-    color: #f1fa8c;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-weight: 700;
-  }
-
-  :global(::-webkit-scrollbar) {
-    width: 10px;
-    height: 10px;
-  }
-
-  :global(::-webkit-scrollbar-track) {
-    background: #21222c;
-  }
-
-  :global(::-webkit-scrollbar-thumb) {
-    background: #44475a;
-    border-radius: 5px;
-  }
-
-  :global(::-webkit-scrollbar-thumb:hover) {
-    background: #6272a4;
-  }
-</style>
-  let activeTab = $state<"processes" | "resources">("processes");
-  let processes = $state<ProcessInfo[]>([]);
-  let systemStats = $state<SystemStats | null>(null);
-  let searchFilter = $state("");
-  let refreshInterval = $state(1000);
-  let topN = $state(20);
-  let intervalId: number | null = null;
-
-  let cpuHistory = $state<number[]>([]);
-  let memoryHistory = $state<number[]>([]);
-  const MAX_HISTORY = 60;
-
-  async function fetchProcesses() {
-    try {
-      processes = await invoke<ProcessInfo[]>("get_processes", { topN });
-    } catch (error) {
-      console.error("Failed to fetch processes:", error);
-    }
-  }
-
-  async function fetchSystemStats() {
-    try {
-      const stats = await invoke<SystemStats>("get_system_stats");
-      systemStats = stats;
-      
-      cpuHistory = [...cpuHistory, stats.cpu_usage].slice(-MAX_HISTORY);
-      memoryHistory = [...memoryHistory, stats.memory_usage_percent].slice(-MAX_HISTORY);
-    } catch (error) {
-      console.error("Failed to fetch system stats:", error);
-    }
-  }
-
-  async function killProcess(pid: number, name: string) {
-    if (!confirm(t(lang, "dialogs.killConfirm", { name, pid }))) {
-      return;
-    }
-    
-    try {
-      await invoke("kill_process", { pid });
-      await fetchProcesses();
-    } catch (error) {
-      alert(t(lang, "dialogs.killFailed", { error: String(error) }));
-    }
-  }
-
-  function startRefresh() {
-    if (intervalId) clearInterval(intervalId);
-    
-    fetchProcesses();
-    fetchSystemStats();
-    
-    intervalId = window.setInterval(() => {
-      if (activeTab === "processes") {
-        fetchProcesses();
-      }
-      fetchSystemStats();
-    }, refreshInterval);
-  }
-
-  $effect(() => {
-    startRefresh();
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  });
-
-  onDestroy(() => {
-    if (intervalId) clearInterval(intervalId);
-  });
-
-  let filteredProcesses = $derived(
-    processes.filter(p => 
-      p.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      p.pid.toString().includes(searchFilter)
-    )
-  );
-
-  function getBarColor(percent: number, type: "cpu" | "memory"): string {
-    if (type === "cpu") {
-      if (percent < 30) return "#50fa7b";
-      if (percent < 60) return "#f1fa8c";
-      if (percent < 80) return "#ffb86c";
-      return "#ff5555";
-    } else {
-      if (percent < 50) return "#50fa7b";
-      if (percent < 70) return "#f1fa8c";
-      if (percent < 90) return "#ffb86c";
-      return "#ff5555";
-    }
-  }
-
-  function formatBar(percent: number, width: number = 20): string {
-    const filled = Math.round((percent / 100) * width);
-    const empty = width - filled;
-    return "█".repeat(filled) + "░".repeat(empty);
-  }
-
-  function formatMemory(mb: number): string {
-    if (mb >= 1024) {
-      return `${(mb / 1024).toFixed(1)}GB`;
-    }
-    return `${mb.toFixed(0)}MB`;
-  }
-</script>
-
-<main>
-  <header>
-    <div class="header-left">
-      <h1>{t(lang, "title")}</h1>
-      <div class="lang-switch">
-        <button 
-          class:active={lang === "ja"}
-          onclick={() => lang = "ja"}
-        >日本語</button>
-        <button 
-          class:active={lang === "en"}
-          onclick={() => lang = "en"}
-        >English</button>
-      </div>
-    </div>
-    
-    <div class="system-overview">
-      <div class="meter-group">
-        <div class="meter-label">{t(lang, "resources.cpu")}</div>
-        <div class="meter-bar">
-          <div 
-            class="meter-fill" 
-            style="width: {systemStats?.cpu_usage ?? 0}%; background-color: {getBarColor(systemStats?.cpu_usage ?? 0, 'cpu')}"
-          ></div>
-        </div>
-        <div class="meter-value">{(systemStats?.cpu_usage ?? 0).toFixed(1)}%</div>
-      </div>
-      
-      <div class="meter-group">
-        <div class="meter-label">{t(lang, "resources.memory")}</div>
-        <div class="meter-bar">
-          <div 
-            class="meter-fill" 
-            style="width: {systemStats?.memory_usage_percent ?? 0}%; background-color: {getBarColor(systemStats?.memory_usage_percent ?? 0, 'memory')}"
-          ></div>
-        </div>
-        <div class="meter-value">
-          {formatMemory(systemStats?.memory_used_mb ?? 0)} / {formatMemory(systemStats?.memory_total_mb ?? 0)}
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <div class="tabs">
-    <button 
-      class:active={activeTab === "processes"}
-      onclick={() => activeTab = "processes"}
-    >
-      F1 {t(lang, "tabs.processes")}
-    </button>
-    <button 
-      class:active={activeTab === "resources"}
-      onclick={() => activeTab = "resources"}
-    >
-      F2 {t(lang, "tabs.resources")}
-    </button>
-    
-    <div class="tab-controls">
-      <label>
-        {t(lang, "settings.interval")}:
-        <input 
-          type="number" 
-          bind:value={refreshInterval} 
-          min="1000" 
-          max="5000" 
-          step="500"
-          onchange={() => startRefresh()}
-        />
-        {t(lang, "settings.ms")}
-      </label>
-      <label>
-        {t(lang, "settings.topN")}:
-        <input 
-          type="number" 
-          bind:value={topN} 
-          min="5" 
-          max="100" 
-          step="5"
-        />
-      </label>
-    </div>
-  </div>
-
-  {#if activeTab === "processes"}
-    <div class="content">
-      <div class="search-bar">
-        <input 
-          type="text" 
-          placeholder={t(lang, "processTable.search")}
-          bind:value={searchFilter}
-        />
-      </div>
-      
-      <div class="process-table">
-        <div class="table-header">
-          <div class="col-pid">{t(lang, "processTable.pid")}</div>
-          <div class="col-name">{t(lang, "processTable.name")}</div>
-          <div class="col-cpu">{t(lang, "processTable.cpu")}</div>
-          <div class="col-memory">{t(lang, "processTable.memory")}</div>
-          <div class="col-action">{t(lang, "processTable.action")}</div>
-        </div>
-        
-        <div class="table-body">
-          {#each filteredProcesses as process (process.pid)}
-            <div class="table-row">
-              <div class="col-pid">{process.pid}</div>
-              <div class="col-name" title={process.name}>{process.name}</div>
-              <div class="col-cpu">
-                <span class="cpu-bar" style="color: {getBarColor(process.cpu_usage, 'cpu')}">
-                  {formatBar(process.cpu_usage, 10)}
-                </span>
-                <span class="cpu-value">{process.cpu_usage.toFixed(1)}%</span>
-              </div>
-              <div class="col-memory">{formatMemory(process.memory_mb)}</div>
-              <div class="col-action">
-                <button 
-                  class="kill-btn"
-                  onclick={() => killProcess(process.pid, process.name)}
-                >
-                  {t(lang, "processTable.kill")}
-                </button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
-    </div>
-  {:else}
-    <div class="content resources-content">
-      <div class="chart-grid">
-        <div class="chart-panel">
-          <div class="chart-header">
-            <h3>{t(lang, "resources.cpu")} - {t(lang, "resources.history")} (60s)</h3>
-            <span class="chart-value" style="color: {getBarColor(systemStats?.cpu_usage ?? 0, 'cpu')}">
-              {(systemStats?.cpu_usage ?? 0).toFixed(1)}%
-            </span>
-          </div>
-          <svg viewBox="0 0 600 100" class="chart">
-            <defs>
-              <linearGradient id="cpuGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:#50fa7b;stop-opacity:0.3" />
-                <stop offset="100%" style="stop-color:#50fa7b;stop-opacity:0.05" />
-              </linearGradient>
-            </defs>
-            
-            {#if cpuHistory.length > 0}
-              <polyline
-                points={cpuHistory.map((v, i) => `${i * (600 / MAX_HISTORY)},${100 - v}`).join(' ')}
-                fill="url(#cpuGradient)"
-                stroke="#50fa7b"
-                stroke-width="2"
-              />
-            {/if}
-            
-            <!-- Grid lines -->
-            <line x1="0" y1="25" x2="600" y2="25" stroke="#44475a" stroke-width="1" opacity="0.3" />
-            <line x1="0" y1="50" x2="600" y2="50" stroke="#44475a" stroke-width="1" opacity="0.3" />
-            <line x1="0" y1="75" x2="600" y2="75" stroke="#44475a" stroke-width="1" opacity="0.3" />
-          </svg>
-        </div>
-
-        <div class="chart-panel">
-          <div class="chart-header">
-            <h3>{t(lang, "resources.memory")} - {t(lang, "resources.history")} (60s)</h3>
-            <span class="chart-value" style="color: {getBarColor(systemStats?.memory_usage_percent ?? 0, 'memory')}">
-              {(systemStats?.memory_usage_percent ?? 0).toFixed(1)}%
-            </span>
-          </div>
-          <svg viewBox="0 0 600 100" class="chart">
-            <defs>
-              <linearGradient id="memGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:#bd93f9;stop-opacity:0.3" />
-                <stop offset="100%" style="stop-color:#bd93f9;stop-opacity:0.05" />
-              </linearGradient>
-            </defs>
-            
-            {#if memoryHistory.length > 0}
-              <polyline
-                points={memoryHistory.map((v, i) => `${i * (600 / MAX_HISTORY)},${100 - v}`).join(' ')}
-                fill="url(#memGradient)"
-                stroke="#bd93f9"
-                stroke-width="2"
-              />
-            {/if}
-            
-            <!-- Grid lines -->
-            <line x1="0" y1="25" x2="600" y2="25" stroke="#44475a" stroke-width="1" opacity="0.3" />
-            <line x1="0" y1="50" x2="600" y2="50" stroke="#44475a" stroke-width="1" opacity="0.3" />
-            <line x1="0" y1="75" x2="600" y2="75" stroke="#44475a" stroke-width="1" opacity="0.3" />
-          </svg>
-        </div>
-      </div>
-    </div>
-  {/if}
-
-  <footer>
-    <div class="footer-key"><span>F1</span> {t(lang, "footer.f1")}</div>
-    <div class="footer-key"><span>F2</span> {t(lang, "footer.f2")}</div>
-    <div class="footer-key"><span>F3</span> {t(lang, "footer.f3")}</div>
-    <div class="footer-key"><span>F9</span> {t(lang, "footer.f9")}</div>
-    <div class="footer-key"><span>F10</span> {t(lang, "footer.f10")}</div>
-  </footer>
-</main>
-
-<style>
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    align-items: flex-end;
+    height: 100px;
+    gap: 2px;
     background-color: #282a36;
-    color: #f8f8f2;
-    overflow: hidden;
-  }
-
-  main {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  /* Header */
-  header {
-    background: linear-gradient(180deg, #44475a 0%, #383a47 100%);
-    padding: 12px 16px;
-    border-bottom: 2px solid #6272a4;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
-
-  h1 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 700;
-    color: #8be9fd;
-    text-shadow: 0 0 10px rgba(139, 233, 253, 0.5);
-  }
-
-  .lang-switch {
-    display: flex;
-    gap: 4px;
-    background: #282a36;
+    border: 1px solid #6272a4;
     border-radius: 4px;
-    padding: 2px;
+    padding: 0.5rem;
   }
 
-  .lang-switch button {
-    background: transparent;
-    border: none;
-    color: #6272a4;
-    padding: 4px 10px;
-    font-size: 11px;
-    cursor: pointer;
-    border-radius: 3px;
-    font-family: inherit;
-  }
-
-  .lang-switch button.active {
-    background: #6272a4;
-    color: #f8f8f2;
-  }
-
-  .system-overview {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 400px;
-  }
-
-  .meter-group {
-    display: grid;
-    grid-template-columns: 80px 1fr 120px;
-    gap: 12px;
-    align-items: center;
-  }
-
-  .meter-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #f1fa8c;
-    text-align: right;
-  }
-
-  .meter-bar {
-    height: 16px;
-    background: #21222c;
-    border-radius: 3px;
-    overflow: hidden;
-    border: 1px solid #44475a;
-  }
-
-  .meter-fill {
-    height: 100%;
-    transition: width 0.3s ease;
-    box-shadow: 0 0 8px currentColor;
-  }
-
-  .meter-value {
-    font-size: 12px;
-    font-weight: 600;
-    color: #f8f8f2;
-    text-align: left;
-  }
-
-  /* Tabs */
-  .tabs {
-    display: flex;
-    background: #21222c;
-    border-bottom: 1px solid #44475a;
-    padding: 0 16px;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .tabs button {
-    padding: 10px 20px;
-    background: transparent;
-    border: none;
-    color: #6272a4;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    border-bottom: 3px solid transparent;
-  }
-
-  .tabs button.active {
-    color: #50fa7b;
-    border-bottom-color: #50fa7b;
-  }
-
-  .tab-controls {
-    display: flex;
-    gap: 20px;
-    font-size: 11px;
-  }
-
-  .tab-controls label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #f8f8f2;
-  }
-
-  .tab-controls input {
-    width: 60px;
-    padding: 4px 6px;
-    background: #282a36;
-    border: 1px solid #44475a;
-    color: #f8f8f2;
-    border-radius: 3px;
-    font-size: 11px;
-    font-family: inherit;
-  }
-
-  /* Content */
-  .content {
+  .chart-bar {
     flex: 1;
-    overflow: auto;
-    padding: 16px;
-    background: #282a36;
+    min-width: 2px;
+    border-radius: 2px 2px 0 0;
+    transition: height 0.3s ease;
   }
 
-  .search-bar {
-    margin-bottom: 12px;
-  }
-
-  .search-bar input {
-    width: 100%;
-    padding: 8px 12px;
-    background: #21222c;
-    border: 1px solid #44475a;
-    color: #f8f8f2;
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: inherit;
-  }
-
-  .search-bar input:focus {
-    outline: none;
-    border-color: #8be9fd;
-    box-shadow: 0 0 0 2px rgba(139, 233, 253, 0.2);
-  }
-
-  /* Process Table */
-  .process-table {
-    background: #21222c;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid #44475a;
-  }
-
-  .table-header {
-    display: grid;
-    grid-template-columns: 80px 1fr 180px 120px 100px;
-    gap: 12px;
-    padding: 10px 16px;
-    background: #383a47;
-    font-weight: 700;
-    font-size: 12px;
-    color: #f1fa8c;
-    border-bottom: 2px solid #6272a4;
-  }
-
-  .table-body {
-    max-height: calc(100vh - 300px);
-    overflow-y: auto;
-  }
-
-  .table-row {
-    display: grid;
-    grid-template-columns: 80px 1fr 180px 120px 100px;
-    gap: 12px;
-    padding: 8px 16px;
-    font-size: 12px;
-    border-bottom: 1px solid #44475a;
-  }
-
-  .table-row:hover {
-    background: #383a47;
-  }
-
-  .col-pid {
-    color: #8be9fd;
-    font-weight: 600;
-  }
-
-  .col-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #f8f8f2;
-  }
-
-  .col-cpu {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .cpu-bar {
-    font-size: 10px;
-    letter-spacing: -1px;
-    font-weight: 700;
-  }
-
-  .cpu-value {
-    color: #f8f8f2;
-    font-weight: 600;
-  }
-
-  .col-memory {
-    color: #bd93f9;
-    font-weight: 600;
-  }
-
-  .kill-btn {
-    padding: 4px 12px;
-    background: #ff5555;
-    border: none;
-    color: #f8f8f2;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 600;
-    font-family: inherit;
-  }
-
-  .kill-btn:hover {
-    background: #ff6e6e;
-    box-shadow: 0 0 8px rgba(255, 85, 85, 0.5);
-  }
-
-  /* Resources */
-  .resources-content {
-    padding: 20px;
-  }
-
-  .chart-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-
-  .chart-panel {
-    background: #21222c;
-    border: 1px solid #44475a;
-    border-radius: 6px;
-    padding: 16px;
-  }
-
-  .chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-
-  .chart-header h3 {
-    margin: 0;
-    font-size: 13px;
-    color: #f1fa8c;
-    font-weight: 600;
-  }
-
-  .chart-value {
-    font-size: 18px;
-    font-weight: 700;
-    text-shadow: 0 0 10px currentColor;
-  }
-
-  .chart {
-    width: 100%;
-    height: 150px;
-    background: #282a36;
-    border-radius: 4px;
-    border: 1px solid #44475a;
-  }
-
-  /* Footer */
   footer {
     display: flex;
-    gap: 8px;
-    padding: 8px 16px;
-    background: #21222c;
-    border-top: 1px solid #44475a;
-    font-size: 11px;
+    justify-content: space-around;
+    padding: 0.5rem;
+    background-color: #44475a;
+    border-top: 2px solid #6272a4;
+    font-size: 0.85rem;
   }
 
-  .footer-key {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #f8f8f2;
+  footer span {
+    color: #8be9fd;
   }
 
-  .footer-key span {
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #282a36;
+  }
+
+  ::-webkit-scrollbar-thumb {
     background: #44475a;
-    color: #f1fa8c;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-weight: 700;
+    border-radius: 6px;
   }
 
-  /* Scrollbar */
-  :global(::-webkit-scrollbar) {
-    width: 10px;
-    height: 10px;
-  }
-
-  :global(::-webkit-scrollbar-track) {
-    background: #21222c;
-  }
-
-  :global(::-webkit-scrollbar-thumb) {
-    background: #44475a;
-    border-radius: 5px;
-  }
-
-  :global(::-webkit-scrollbar-thumb:hover) {
+  ::-webkit-scrollbar-thumb:hover {
     background: #6272a4;
   }
 </style>
