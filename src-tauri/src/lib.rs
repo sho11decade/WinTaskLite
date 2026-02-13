@@ -23,11 +23,10 @@ struct AppState {
 }
 
 #[tauri::command]
-#[allow(non_snake_case)]
-fn get_processes(state: tauri::State<AppState>, topN: usize) -> Result<Vec<ProcessInfo>, String> {
+fn get_processes(state: tauri::State<AppState>, top_n: usize) -> Result<Vec<ProcessInfo>, String> {
     let mut sys = state.system.lock().map_err(|e| format!("Lock error: {}", e))?;
     
-    // Refresh only what we need
+    // Refresh processes
     sys.refresh_processes_specifics(
         sysinfo::ProcessesToUpdate::All,
         true,
@@ -37,7 +36,7 @@ fn get_processes(state: tauri::State<AppState>, topN: usize) -> Result<Vec<Proce
     );
     
     // Pre-allocate with estimated capacity
-    let mut processes: Vec<ProcessInfo> = Vec::with_capacity(topN.min(100));
+    let mut processes: Vec<ProcessInfo> = Vec::with_capacity(top_n.min(100));
     
     for (pid, process) in sys.processes() {
         processes.push(ProcessInfo {
@@ -53,7 +52,7 @@ fn get_processes(state: tauri::State<AppState>, topN: usize) -> Result<Vec<Proce
         b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap_or(std::cmp::Ordering::Equal)
     );
     
-    processes.truncate(topN);
+    processes.truncate(top_n);
     processes.shrink_to_fit(); // Free excess capacity
     
     Ok(processes)
@@ -102,9 +101,31 @@ fn kill_process(state: tauri::State<AppState>, pid: u32) -> Result<bool, String>
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize with minimal refresh
+    // Initialize System and warm up CPU measurements
     let mut sys = System::new();
+    
+    // Warm up: refresh CPU and processes to initialize measurements
     sys.refresh_cpu_usage();
+    sys.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::new()
+            .with_cpu()
+            .with_memory(),
+    );
+    
+    // Wait briefly for initial CPU measurement baseline
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    
+    // Second refresh for accurate initial readings
+    sys.refresh_cpu_usage();
+    sys.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::new()
+            .with_cpu()
+            .with_memory(),
+    );
     sys.refresh_memory();
     
     tauri::Builder::default()

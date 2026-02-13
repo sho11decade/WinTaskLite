@@ -2,6 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { t, type Language } from '$lib/i18n';
+  import HelpDialog from '$lib/components/HelpDialog.svelte';
+  import AboutDialog from '$lib/components/AboutDialog.svelte';
 
   interface Process {
     pid: number;
@@ -23,24 +25,26 @@
     topN: number;
   }
 
-  let lang: Language = 'en';
-  let activeTab: 'processes' | 'resources' = 'processes';
-  let processes: Process[] = [];
-  let systemStats: SystemStats = {
+  let lang = $state<Language>('en');
+  let activeTab = $state<'processes' | 'resources'>('processes');
+  let processes = $state<Process[]>([]);
+  let systemStats = $state<SystemStats>({
     cpu_usage: 0,
     memory_total_mb: 0,
     memory_used_mb: 0,
     memory_usage_percent: 0
-  };
-  let searchFilter = '';
-  let refreshInterval = 1000;
-  let topN = 10;
-  let loading = false;
-  let error = '';
-  let cpuHistory: number[] = [];
-  let memoryHistory: number[] = [];
+  });
+  let searchFilter = $state('');
+  let refreshInterval = $state(1000);
+  let topN = $state(10);
+  let loading = $state(false);
+  let error = $state('');
+  let cpuHistory = $state<number[]>([]);
+  let memoryHistory = $state<number[]>([]);
   let intervalId: number | null = null;
   let maxHistoryLength = 60;
+  let showHelp = $state(false);
+  let showAbout = $state(false);
 
   function loadConfig() {
     try {
@@ -69,7 +73,9 @@
     try {
       loading = true;
       error = '';
+      console.log('Fetching processes with topN:', topN);
       processes = await invoke<Process[]>('get_processes', { topN });
+      console.log('Fetched processes:', processes.length);
     } catch (e) {
       error = String(e);
       console.error('Failed to fetch processes:', e);
@@ -80,7 +86,9 @@
 
   async function fetchSystemStats() {
     try {
+      console.log('Fetching system stats...');
       systemStats = await invoke<SystemStats>('get_system_stats');
+      console.log('System stats:', systemStats);
       cpuHistory = [...cpuHistory, systemStats.cpu_usage].slice(-maxHistoryLength);
       memoryHistory = [...memoryHistory, systemStats.memory_usage_percent].slice(-maxHistoryLength);
     } catch (e) {
@@ -107,9 +115,7 @@
       clearInterval(intervalId);
     }
     
-    fetchProcesses();
-    fetchSystemStats();
-    
+    // インターバル設定のみ（初回データは既に取得済み）
     intervalId = window.setInterval(() => {
       fetchProcesses();
       fetchSystemStats();
@@ -119,13 +125,24 @@
   function handleKeyboard(e: KeyboardEvent) {
     if (e.key === 'F1') {
       e.preventDefault();
-      alert(t(lang, 'title') + ' - ' + t(lang, 'footer.f1'));
+      showHelp = !showHelp;
     } else if (e.key === 'F2') {
       e.preventDefault();
-      activeTab = 'processes';
+      activeTab = activeTab === 'processes' ? 'resources' : 'processes';
     } else if (e.key === 'F3') {
       e.preventDefault();
-      document.getElementById('search-input')?.focus();
+      if (refreshInterval > 1000) {
+        refreshInterval -= 500;
+        saveConfig();
+        startRefresh();
+      }
+    } else if (e.key === 'F4') {
+      e.preventDefault();
+      if (refreshInterval < 5000) {
+        refreshInterval += 500;
+        saveConfig();
+        startRefresh();
+      }
     } else if (e.key === 'F5') {
       e.preventDefault();
       fetchProcesses();
@@ -151,8 +168,11 @@
   }
 
   function formatBar(value: number, width: number = 20): string {
-    const filled = Math.round((value / 100) * width);
-    return '█'.repeat(filled) + '░'.repeat(width - filled);
+    // Clamp value between 0 and 100 to prevent negative or excessive values
+    const clampedValue = Math.max(0, Math.min(100, value));
+    const filled = Math.round((clampedValue / 100) * width);
+    const empty = Math.max(0, width - filled);
+    return '█'.repeat(filled) + '░'.repeat(empty);
   }
 
   function formatMemory(bytes: number): string {
@@ -162,25 +182,54 @@
     return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
   }
 
-  $: filteredProcesses = processes.filter(p => 
-    p.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    p.pid.toString().includes(searchFilter)
+  let filteredProcesses = $derived(
+    processes.filter(p => 
+      p.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+      p.pid.toString().includes(searchFilter)
+    )
   );
 
-  $: {
-    lang;
-    refreshInterval;
-    topN;
-    saveConfig();
-  }
+  // Config保存用のeffect
+  $effect(() => {
+    // マウント後のみ保存
+    if (typeof window !== 'undefined') {
+      lang;
+      refreshInterval;
+      topN;
+      saveConfig();
+    }
+  });
 
-  $: if (refreshInterval) {
-    startRefresh();
-  }
+  // topN変更時にデータ再取得
+  $effect(() => {
+    if (isInitialized) {
+      topN;
+      fetchProcesses();
+    }
+  });
 
-  onMount(() => {
+  // インターバル変更時の処理
+  let isInitialized = false;
+  $effect(() => {
+    if (isInitialized && refreshInterval) {
+      startRefresh();
+    }
+  });
+
+  onMount(async () => {
+    console.log('Component mounted, initializing...');
     loadConfig();
+    console.log('Config loaded, lang:', lang, 'interval:', refreshInterval, 'topN:', topN);
+    // 初回データ取得を確実に実行
+    try {
+      await Promise.all([fetchProcesses(), fetchSystemStats()]);
+      console.log('Initial data fetched successfully');
+    } catch (e) {
+      console.error('Failed to initialize:', e);
+    }
     startRefresh();
+    isInitialized = true;
+    console.log('Initialization complete');
   });
 
   onDestroy(() => {
@@ -196,7 +245,10 @@
   <header>
     <h1>{t(lang, 'title')}</h1>
     <div class="header-controls">
-      <select bind:value={lang} class="lang-select">
+      <button class="icon-btn" onclick={() => showAbout = !showAbout} title="About" aria-label="About">
+        ℹ️
+      </button>
+      <select bind:value={lang} class="lang-select" title={t(lang, 'tooltips.language')}>
         <option value="en">English</option>
         <option value="ja">日本語</option>
       </select>
@@ -228,13 +280,13 @@
   <nav class="tabs">
     <button 
       class:active={activeTab === 'processes'} 
-      on:click={() => activeTab = 'processes'}
+      onclick={() => activeTab = 'processes'}
     >
       {t(lang, 'tabs.processes')}
     </button>
     <button 
       class:active={activeTab === 'resources'} 
-      on:click={() => activeTab = 'resources'}
+      onclick={() => activeTab = 'resources'}
     >
       {t(lang, 'tabs.resources')}
     </button>
@@ -269,7 +321,7 @@
     {:else if error}
       <div class="message error">
         <p>{t(lang, 'messages.error')}: {error}</p>
-        <button on:click={fetchProcesses}>{t(lang, 'messages.retry')}</button>
+        <button onclick={fetchProcesses}>{t(lang, 'messages.retry')}</button>
       </div>
     {:else if activeTab === 'processes'}
       {#if filteredProcesses.length === 0}
@@ -305,7 +357,7 @@
                 <td>
                   <button 
                     class="kill-btn" 
-                    on:click={() => killProcess(process.pid, process.name)}
+                    onclick={() => killProcess(process.pid, process.name)}
                   >
                     {t(lang, 'processTable.kill')}
                   </button>
@@ -384,6 +436,9 @@
   </footer>
 </div>
 
+<HelpDialog {lang} show={showHelp} onClose={() => showHelp = false} />
+<AboutDialog {lang} show={showAbout} onClose={() => showAbout = false} />
+
 <style>
   :global(body) {
     margin: 0;
@@ -420,6 +475,22 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+  }
+
+  .icon-btn {
+    background: #44475a;
+    border: 1px solid #6272a4;
+    color: #f8f8f2;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+  }
+
+  .icon-btn:hover {
+    background: #6272a4;
+    transform: scale(1.05);
   }
 
   .lang-select {

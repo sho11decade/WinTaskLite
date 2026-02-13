@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+        continue-on-error: true
+      
+      - name: Run Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+        continue-on-error: true
+      
+      - name: Build Rust
+        run: cargo build --manifest-path src-tauri/Cargo.toml
+      
+      - name: Build frontend
+        run: npm run build
+      
+      - name: Check bundle size
+        run: |
+          $size = (Get-ChildItem -Path build -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+          Write-Host "Build size: $([math]::Round($size, 2)) MB"
+          if ($size -gt 10) {
+            Write-Warning "Build size exceeds 10MB"
+          }
+        shell: powershell
+        continue-on-error: true
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      
+      - name: Run security audit
+        run: cargo audit --file src-tauri/Cargo.lock
+        continue-on-error: true

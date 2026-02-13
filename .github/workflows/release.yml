@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+      release_upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: TaskLite ${{ steps.get_version.outputs.version }}
+          body: |
+            ## TaskLite ${{ steps.get_version.outputs.version }}
+            
+            ### Features
+            - Lightweight Windows system monitor
+            - htop-inspired UI with Dracula theme
+            - Multilingual support (Japanese & English)
+            - Real-time process and resource monitoring
+            - Keyboard shortcuts (F1-F10)
+            
+            ### Installation
+            Download the MSI installer for Windows x64 below.
+            
+            ### Changes
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          draft: true
+          prerelease: false
+
+  build-windows:
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Tauri app
+        run: npm run tauri build
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+      
+      - name: Get app name
+        id: get_app_name
+        run: |
+          $name = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).productName
+          echo "app_name=$name" >> $env:GITHUB_OUTPUT
+        shell: powershell
+      
+      - name: Upload MSI
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.release_upload_url }}
+          asset_path: ./src-tauri/target/release/bundle/msi/TaskLite_${{ needs.create-release.outputs.release_version }}_x64_en-US.msi
+          asset_name: TaskLite-${{ needs.create-release.outputs.release_version }}-windows-x64.msi
+          asset_content_type: application/x-msi
+      
+      - name: Upload EXE
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.release_upload_url }}
+          asset_path: ./src-tauri/target/release/tasklite.exe
+          asset_name: TaskLite-${{ needs.create-release.outputs.release_version }}-windows-x64.exe
+          asset_content_type: application/x-msdownload
+      
+      - name: Generate checksums
+        run: |
+          cd src-tauri/target/release/bundle/msi
+          Get-FileHash *.msi -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $($_.Path | Split-Path -Leaf)" } | Out-File -FilePath checksums.txt
+        shell: powershell
+      
+      - name: Upload checksums
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.release_upload_url }}
+          asset_path: ./src-tauri/target/release/bundle/msi/checksums.txt
+          asset_name: checksums.txt
+          asset_content_type: text/plain
