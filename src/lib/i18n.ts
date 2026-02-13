@@ -30,12 +30,20 @@ export const translations = {
     dialogs: {
       killConfirm: "プロセス「{name}」(PID: {pid})を終了しますか？",
       killSuccess: "プロセスを終了しました",
-      killFailed: "プロセスの終了に失敗しました: {error}"
+      killFailed: "プロセスの終了に失敗しました: {error}",
+      quitConfirm: "TaskLiteを終了しますか？"
+    },
+    messages: {
+      loading: "読み込み中...",
+      error: "エラーが発生しました",
+      retry: "再試行",
+      noProcesses: "プロセスが見つかりません"
     },
     footer: {
       f1: "ヘルプ",
       f2: "設定",
       f3: "検索",
+      f5: "更新",
       f9: "終了",
       f10: "終了"
     }
@@ -71,12 +79,20 @@ export const translations = {
     dialogs: {
       killConfirm: "Kill process \"{name}\" (PID: {pid})?",
       killSuccess: "Process terminated successfully",
-      killFailed: "Failed to kill process: {error}"
+      killFailed: "Failed to kill process: {error}",
+      quitConfirm: "Quit TaskLite?"
+    },
+    messages: {
+      loading: "Loading...",
+      error: "An error occurred",
+      retry: "Retry",
+      noProcesses: "No processes found"
     },
     footer: {
       f1: "Help",
       f2: "Setup",
       f3: "Search",
+      f5: "Refresh",
       f9: "Kill",
       f10: "Quit"
     }

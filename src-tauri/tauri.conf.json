@@ -13,20 +13,28 @@
     "windows": [
       {
         "title": "TaskLite",
-        "width": 900,
-        "height": 600,
+        "width": 1000,
+        "height": 650,
+        "minWidth": 800,
+        "minHeight": 500,
         "resizable": true,
         "decorations": true,
-        "transparent": false
+        "transparent": false,
+        "fullscreen": false,
+        "skipTaskbar": false
       }
-    ]
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'"
+    }
   },
   "bundle": {
     "active": false,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
-      "icons/128x128.png"
+      "icons/128x128.png",
+      "icons/icon.ico"
     ]
   }
 }

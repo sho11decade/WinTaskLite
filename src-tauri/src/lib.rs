@@ -24,8 +24,9 @@ struct AppState {
 
 #[tauri::command]
 fn get_processes(state: tauri::State<AppState>, top_n: usize) -> Result<Vec<ProcessInfo>, String> {
-    let mut sys = state.system.lock().map_err(|e| e.to_string())?;
+    let mut sys = state.system.lock().map_err(|e| format!("Lock error: {}", e))?;
     
+    // Refresh only what we need
     sys.refresh_processes_specifics(
         sysinfo::ProcessesToUpdate::All,
         true,
@@ -34,34 +35,41 @@ fn get_processes(state: tauri::State<AppState>, top_n: usize) -> Result<Vec<Proc
             .with_memory(),
     );
     
-    let mut processes: Vec<ProcessInfo> = sys
-        .processes()
-        .iter()
-        .map(|(pid, process)| ProcessInfo {
+    // Pre-allocate with estimated capacity
+    let mut processes: Vec<ProcessInfo> = Vec::with_capacity(top_n.min(100));
+    
+    for (pid, process) in sys.processes() {
+        processes.push(ProcessInfo {
             pid: pid.as_u32(),
-            name: process.name().to_string_lossy().to_string(),
+            name: process.name().to_string_lossy().into_owned(),
             cpu_usage: process.cpu_usage(),
             memory_mb: process.memory() as f64 / 1_048_576.0,
-        })
-        .collect();
+        });
+    }
     
-    processes.sort_by(|a, b| b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap());
+    // Use unstable sort for better performance (order of equal elements doesn't matter)
+    processes.sort_unstable_by(|a, b| 
+        b.cpu_usage.partial_cmp(&a.cpu_usage).unwrap_or(std::cmp::Ordering::Equal)
+    );
+    
     processes.truncate(top_n);
+    processes.shrink_to_fit(); // Free excess capacity
     
     Ok(processes)
 }
 
 #[tauri::command]
 fn get_system_stats(state: tauri::State<AppState>) -> Result<SystemStats, String> {
-    let mut sys = state.system.lock().map_err(|e| e.to_string())?;
+    let mut sys = state.system.lock().map_err(|e| format!("Lock error: {}", e))?;
     
-    sys.refresh_cpu_all();
+    // Refresh only CPU and memory
+    sys.refresh_cpu_usage();
     sys.refresh_memory();
     
     let memory_total = sys.total_memory() as f64 / 1_048_576.0;
     let memory_used = sys.used_memory() as f64 / 1_048_576.0;
     let memory_percent = if memory_total > 0.0 {
-        (memory_used / memory_total * 100.0) as f32
+        ((memory_used / memory_total) * 100.0) as f32
     } else {
         0.0
     };
@@ -76,7 +84,7 @@ fn get_system_stats(state: tauri::State<AppState>) -> Result<SystemStats, String
 
 #[tauri::command]
 fn kill_process(state: tauri::State<AppState>, pid: u32) -> Result<bool, String> {
-    let sys = state.system.lock().map_err(|e| e.to_string())?;
+    let sys = state.system.lock().map_err(|e| format!("Lock error: {}", e))?;
     
     let sysinfo_pid = sysinfo::Pid::from_u32(pid);
     
@@ -84,7 +92,7 @@ fn kill_process(state: tauri::State<AppState>, pid: u32) -> Result<bool, String>
         if process.kill() {
             Ok(true)
         } else {
-            Err("Failed to kill process".to_string())
+            Err("Failed to kill process (insufficient permissions or system process)".to_string())
         }
     } else {
         Err("Process not found".to_string())
@@ -93,8 +101,10 @@ fn kill_process(state: tauri::State<AppState>, pid: u32) -> Result<bool, String>
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut sys = System::new_all();
-    sys.refresh_all();
+    // Initialize with minimal refresh
+    let mut sys = System::new();
+    sys.refresh_cpu_usage();
+    sys.refresh_memory();
     
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
