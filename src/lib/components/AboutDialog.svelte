@@ -10,7 +10,7 @@
 
     let { lang, show, onClose }: Props = $props();
 
-    const VERSION = "0.1.0";
+    const VERSION = "1.0.1";
     const GITHUB_URL = "https://github.com/sho11decade/WinTaskLite";
 
     const openGitHubLink = (event: MouseEvent) => {

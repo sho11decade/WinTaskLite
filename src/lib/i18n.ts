@@ -3,7 +3,7 @@ export const translations = {
     title: "TaskLite",
     tabs: {
       processes: "プロセス",
-      resources: "リソース"
+      resources: "リソース",
     },
     processTable: {
       rank: "順位",
@@ -12,8 +12,8 @@ export const translations = {
       cpu: "CPU%",
       memory: "メモリ",
       action: "操作",
-      kill: "終了",
-      search: "プロセスを検索..."
+      kill: "タスクの終了",
+      search: "プロセスを検索...",
     },
     resources: {
       cpu: "CPU使用率",
@@ -23,32 +23,32 @@ export const translations = {
       history: "履歴",
       min: "最小",
       avg: "平均",
-      max: "最大"
+      max: "最大",
     },
     status: {
       processes: "プロセス",
       top: "トップ",
       refresh: "更新",
       updated: "更新時刻",
-      none: "なし"
+      none: "なし",
     },
     settings: {
       interval: "更新間隔",
       topN: "表示数",
       language: "言語",
-      ms: "ミリ秒"
+      ms: "ミリ秒",
     },
     dialogs: {
       killConfirm: "プロセス「{name}」(PID: {pid})を終了しますか？",
       killSuccess: "プロセスを終了しました",
       killFailed: "プロセスの終了に失敗しました: {error}",
-      quitConfirm: "TaskLiteを終了しますか？"
+      quitConfirm: "TaskLiteを終了しますか？",
     },
     messages: {
       loading: "読み込み中...",
       error: "エラーが発生しました",
       retry: "再試行",
-      noProcesses: "プロセスが見つかりません"
+      noProcesses: "プロセスが見つかりません",
     },
     footer: {
       f1: "ヘルプ",
@@ -57,7 +57,7 @@ export const translations = {
       f4: "遅く",
       f5: "更新",
       f9: "終了",
-      f10: "終了"
+      f10: "終了",
     },
     help: {
       title: "ヘルプ - キーボードショートカット",
@@ -71,22 +71,22 @@ export const translations = {
         f5: "即座に更新",
         f9: "プロセスを終了（未実装）",
         f10: "アプリケーションを終了",
-        search: "検索フィールドにフォーカス"
+        search: "検索フィールドにフォーカス",
       },
       features: {
         title: "機能",
         processes: "プロセス管理 - CPU使用率の高いプロセスを表示・終了",
         resources: "リソース監視 - CPUとメモリの使用状況をリアルタイムで表示",
         charts: "履歴グラフ - 過去60秒のCPUとメモリの使用状況",
-        config: "設定の保存 - 言語、更新間隔、表示数を自動保存"
+        config: "設定の保存 - 言語、更新間隔、表示数を自動保存",
       },
       tips: {
         title: "ヒント",
         tip1: "検索ボックスでプロセス名をフィルタリング",
         tip2: "更新間隔を調整してCPU使用率を最適化",
         tip3: "リソースタブでシステム全体の状況を確認",
-        tip4: "管理者権限が必要なプロセスもあります"
-      }
+        tip4: "管理者権限が必要なプロセスもあります",
+      },
     },
     about: {
       title: "TaskLiteについて",
@@ -95,7 +95,7 @@ export const translations = {
       features: "htopインスパイアのUI、多言語対応、最適化されたパフォーマンス",
       github: "GitHub",
       license: "MITライセンス",
-      close: "閉じる"
+      close: "閉じる",
     },
     tooltips: {
       language: "表示言語を切り替え",
@@ -103,14 +103,14 @@ export const translations = {
       topN: "表示するプロセスの最大数",
       search: "プロセス名で検索",
       kill: "このプロセスを終了",
-      refresh: "今すぐ更新"
-    }
+      refresh: "今すぐ更新",
+    },
   },
   en: {
     title: "TaskLite",
     tabs: {
       processes: "Processes",
-      resources: "Resources"
+      resources: "Resources",
     },
     processTable: {
       rank: "Rank",
@@ -120,7 +120,7 @@ export const translations = {
       memory: "Memory",
       action: "Action",
       kill: "Kill",
-      search: "Search processes..."
+      search: "Search processes...",
     },
     resources: {
       cpu: "CPU Usage",
@@ -130,32 +130,32 @@ export const translations = {
       history: "History",
       min: "Min",
       avg: "Avg",
-      max: "Max"
+      max: "Max",
     },
     status: {
       processes: "Processes",
       top: "Top",
       refresh: "Refresh",
       updated: "Updated",
-      none: "None"
+      none: "None",
     },
     settings: {
       interval: "Interval",
       topN: "Top N",
       language: "Language",
-      ms: "ms"
+      ms: "ms",
     },
     dialogs: {
-      killConfirm: "Kill process \"{name}\" (PID: {pid})?",
+      killConfirm: 'Kill process "{name}" (PID: {pid})?',
       killSuccess: "Process terminated successfully",
       killFailed: "Failed to kill process: {error}",
-      quitConfirm: "Quit TaskLite?"
+      quitConfirm: "Quit TaskLite?",
     },
     messages: {
       loading: "Loading...",
       error: "An error occurred",
       retry: "Retry",
-      noProcesses: "No processes found"
+      noProcesses: "No processes found",
     },
     footer: {
       f1: "Help",
@@ -164,7 +164,7 @@ export const translations = {
       f4: "Slower",
       f5: "Refresh",
       f9: "Kill",
-      f10: "Quit"
+      f10: "Quit",
     },
     help: {
       title: "Help - Keyboard Shortcuts",
@@ -178,22 +178,23 @@ export const translations = {
         f5: "Refresh immediately",
         f9: "Kill process (not implemented)",
         f10: "Quit application",
-        search: "Focus search field"
+        search: "Focus search field",
       },
       features: {
         title: "Features",
         processes: "Process Management - View and kill high CPU processes",
         resources: "Resource Monitoring - Real-time CPU and memory usage",
         charts: "History Charts - 60 seconds of CPU and memory history",
-        config: "Persistent Settings - Language, interval, and display count auto-saved"
+        config:
+          "Persistent Settings - Language, interval, and display count auto-saved",
       },
       tips: {
         title: "Tips",
         tip1: "Use search box to filter processes by name",
         tip2: "Adjust refresh interval to optimize CPU usage",
         tip3: "Check Resources tab for overall system status",
-        tip4: "Some processes require administrator privileges"
-      }
+        tip4: "Some processes require administrator privileges",
+      },
     },
     about: {
       title: "About TaskLite",
@@ -202,7 +203,7 @@ export const translations = {
       features: "htop-inspired UI, multilingual support, optimized performance",
       github: "GitHub",
       license: "MIT License",
-      close: "Close"
+      close: "Close",
     },
     tooltips: {
       language: "Switch display language",
@@ -210,28 +211,32 @@ export const translations = {
       topN: "Maximum number of processes to display",
       search: "Search by process name",
       kill: "Terminate this process",
-      refresh: "Update now"
-    }
-  }
+      refresh: "Update now",
+    },
+  },
 };
 
 export type Language = "ja" | "en";
 
-export function t(lang: Language, key: string, params?: Record<string, string | number>): string {
+export function t(
+  lang: Language,
+  key: string,
+  params?: Record<string, string | number>,
+): string {
   const keys = key.split(".");
   let value: any = translations[lang];
-  
+
   for (const k of keys) {
     value = value?.[k];
   }
-  
+
   if (typeof value !== "string") {
     return key;
   }
-  
+
   if (params) {
     return value.replace(/\{(\w+)\}/g, (_, k) => String(params[k] ?? ""));
   }
-  
+
   return value;
 }

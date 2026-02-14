@@ -1,6 +1,6 @@
 [package]
 name = "tasklite"
-version = "0.1.0"
+version = "1.0.1"
 description = "A lite task manager for windows"
 authors = ["RiceZero"]
 edition = "2021"
