@@ -1,153 +1,153 @@
-# Contributing to TaskLite
+# TaskLite へのコントリビュート
 
-Thank you for your interest in contributing to TaskLite! This document provides guidelines and instructions for contributing.
+TaskLite へのご関心ありがとうございます。このドキュメントでは、開発参加のためのガイドラインを説明します。
 
-## Development Setup
+## 開発環境セットアップ
 
-### Prerequisites
-- Node.js 20 or later
-- Rust 1.70 or later
-- Windows 10/11 (primary target platform)
+### 前提条件
+- Node.js 20 以上
+- Rust 1.70 以上
+- Windows 10/11（主要ターゲット）
 
-### Getting Started
+### はじめ方
 
-1. Clone the repository:
+1. リポジトリをクローンします。
 ```bash
-git clone https://github.com/yourusername/tasklite.git
-cd tasklite
+git clone https://github.com/sho11decade/WinTaskLite.git
+cd WinTaskLite
 ```
 
-2. Install dependencies:
+2. 依存関係をインストールします。
 ```bash
 npm install
 ```
 
-3. Run in development mode:
+3. 開発モードで起動します。
 ```bash
 npm run tauri dev
 ```
 
-## Project Structure
+## プロジェクト構成
 
 ```
-tasklite/
-├── src/                    # Frontend (Svelte)
-│   ├── routes/            # SvelteKit routes
-│   │   └── +page.svelte  # Main application page
-│   └── lib/              # Shared libraries
-│       ├── i18n.ts       # Internationalization
-│       └── components/   # Reusable components
-├── src-tauri/            # Backend (Rust)
+WinTaskLite/
+├── src/                    # フロントエンド（Svelte）
+│   ├── routes/             # SvelteKit ルート
+│   │   └── +page.svelte    # メインアプリページ
+│   └── lib/                # 共通ライブラリ
+│       ├── i18n.ts         # 国際化
+│       └── components/     # 再利用可能コンポーネント
+├── src-tauri/              # バックエンド（Rust）
 │   ├── src/
-│   │   ├── lib.rs       # Tauri commands
-│   │   └── main.rs      # Entry point
-│   └── Cargo.toml       # Rust dependencies
-├── static/              # Static assets
-└── .github/             # GitHub Actions workflows
+│   │   ├── lib.rs          # Tauri コマンド
+│   │   └── main.rs         # エントリーポイント
+│   └── Cargo.toml          # Rust 依存関係
+├── static/                 # 静的アセット
+└── .github/                # GitHub Actions ワークフロー
 ```
 
-## Code Style
+## コードスタイル
 
-### TypeScript/Svelte
-- Use TypeScript for type safety
-- Follow Svelte 5 runes ($state, $derived, $effect)
-- Use 2-space indentation
-- Use meaningful variable names
+### TypeScript / Svelte
+- 型安全のため TypeScript を利用する
+- Svelte 5 の runes（`$state`, `$derived`, `$effect`）に従う
+- インデントは 2 スペース
+- 意味のある変数名を使う
 
 ### Rust
-- Follow Rust standard formatting (`cargo fmt`)
-- Use `cargo clippy` to catch common mistakes
-- Prefer idiomatic Rust patterns
-- Document public APIs
+- Rust 標準フォーマット（`cargo fmt`）に従う
+- `cargo clippy` で一般的なミスを検出する
+- Rust らしい（idiomatic）実装を優先する
+- 公開 API はドキュメント化する
 
-## Development Workflow
+## 開発ワークフロー
 
-### Adding Features
+### 機能追加時
 
-1. Create a feature branch:
+1. 機能ブランチを作成します。
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
-2. Make your changes with clear, atomic commits
+2. 変更は明確で小さなコミット単位で行います。
 
-3. Test thoroughly:
+3. 十分にテストします。
 ```bash
 npm run tauri dev
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-4. Update documentation if needed
+4. 必要に応じてドキュメントを更新します。
 
-5. Submit a pull request
+5. Pull Request を作成します。
 
-### Pull Request Guidelines
+### Pull Request ガイドライン
 
-- Provide a clear description of the changes
-- Reference any related issues
-- Ensure CI checks pass
-- Keep PRs focused on a single feature/fix
-- Update CHANGELOG.md with your changes
+- 変更内容を明確に説明する
+- 関連 Issue があれば参照する
+- CI チェックが通ることを確認する
+- 1 つの機能/修正に焦点を絞る
+- `CHANGELOG.md` に変更内容を追記する
 
-## Testing
+## テスト
 
-### Manual Testing
-- Test on Windows 10 and Windows 11
-- Verify all keyboard shortcuts work
-- Check both English and Japanese languages
-- Test with varying process counts
-- Verify performance targets are met
+### 手動テスト
+- Windows 10 と Windows 11 の両方で確認する
+- すべてのキーボードショートカットが動作することを確認する
+- 英語・日本語の両言語表示を確認する
+- 表示プロセス件数を変えて確認する
+- 性能目標を満たすことを確認する
 
-### Performance Targets
-- Memory usage: <25MB
-- CPU usage: <1% average
-- Startup time: <1 second
-- Update latency: <100ms
+### 性能目標
+- メモリ使用量: 25MB 未満
+- CPU 使用率: 平均 1% 未満
+- 起動時間: 1 秒未満
+- 更新レイテンシ: 100ms 未満
 
-## Adding Translations
+## 翻訳を追加するには
 
-To add a new language:
+新しい言語を追加する場合は次の手順に従ってください。
 
-1. Edit `src/lib/i18n.ts`
-2. Add language code to `Language` type
-3. Add complete translations object
-4. Update language selector in UI
-5. Test all strings display correctly
+1. `src/lib/i18n.ts` を編集する
+2. `Language` 型に言語コードを追加する
+3. 翻訳オブジェクトを一式追加する
+4. UI の言語セレクターを更新する
+5. すべての文字列が正しく表示されることを確認する
 
-## Release Process
+## リリース手順
 
-Releases are automated via GitHub Actions:
+リリースは GitHub Actions で自動化されています。
 
-1. Update version in:
+1. 以下のバージョンを更新します。
    - `package.json`
    - `src-tauri/Cargo.toml`
    - `src-tauri/tauri.conf.json`
 
-2. Update `CHANGELOG.md`
+2. `CHANGELOG.md` を更新します。
 
-3. Create and push a version tag:
+3. バージョンタグを作成・push します。
 ```bash
 git tag v0.2.0
 git push origin v0.2.0
 ```
 
-4. GitHub Actions will build and create a draft release
+4. GitHub Actions がビルドを実行し、ドラフトリリースを作成します。
 
-5. Review and publish the release
+5. 内容を確認してリリース公開します。
 
-## Code of Conduct
+## 行動規範
 
-- Be respectful and inclusive
-- Provide constructive feedback
-- Focus on the code, not the person
-- Help maintain a positive community
+- 互いを尊重し、包摂的に振る舞う
+- 建設的なフィードバックを行う
+- 人ではなくコードに焦点を当てる
+- 前向きなコミュニティづくりに協力する
 
-## Questions?
+## 質問・相談
 
-- Open an issue for bugs or feature requests
-- Use discussions for general questions
-- Check existing issues before creating new ones
+- バグ報告や機能要望は Issue を作成してください
+- 一般的な質問は Discussions を利用してください
+- 新規作成前に既存 Issue を確認してください
 
-## License
+## ライセンス
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+コントリビュートしたコードは MIT License の下で公開されることに同意したものとみなされます。

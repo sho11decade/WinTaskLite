@@ -1,55 +1,55 @@
 # Changelog
 
-All notable changes to TaskLite will be documented in this file.
+TaskLite の主な変更はこのファイルに記録します。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+形式は [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) に準拠し、
+バージョニングは [Semantic Versioning](https://semver.org/spec/v2.0.0.html) に従います。
 
 ## [Unreleased]
 
-### Added
-- Help dialog with keyboard shortcuts reference (F1)
-- About dialog with version and license information
-- Tooltips for all interactive elements
-- GitHub Actions CI/CD for automated releases
-- Automated Windows MSI installer builds
-- Security auditing in CI pipeline
-- Enhanced error handling with user-friendly messages
-- Improved keyboard shortcuts (F3/F4 for interval adjustment)
+### 追加
+- キーボードショートカット一覧付きヘルプダイアログ（F1）
+- バージョン情報とライセンス情報を表示する About ダイアログ
+- すべての操作要素へのツールチップ
+- 自動リリース向け GitHub Actions CI/CD
+- Windows MSI インストーラーの自動ビルド
+- CI パイプラインへのセキュリティ監査
+- ユーザーフレンドリーなエラーハンドリングの強化
+- キーボードショートカット改善（F3/F4 で更新間隔調整）
 
-### Changed
-- F2 now toggles between Processes/Resources tabs
-- F3/F4 adjust refresh interval instead of search focus
-- Improved accessibility with ARIA labels
-- Enhanced Dracula theme styling for dialogs
+### 変更
+- F2 で Processes/Resources タブを切り替える仕様に変更
+- F3/F4 を検索フォーカスではなく更新間隔調整に変更
+- ARIA ラベルによるアクセシビリティ改善
+- ダイアログ向け Dracula テーマスタイルを強化
 
-### Fixed
-- Parameter naming issue with Tauri commands (topN)
-- Field name mismatches between frontend and backend
-- Import path for Tauri v2 API
+### 修正
+- Tauri コマンドのパラメーター名問題（topN）
+- フロントエンドとバックエンド間のフィールド名不一致
+- Tauri v2 API の import パス
 
 ## [0.1.0] - 2026-02-13
 
-### Added
-- Initial release
-- Process monitoring with CPU and memory usage
-- System resource monitoring (CPU & Memory)
-- Real-time charts with 60-second history
-- Multilingual support (Japanese & English)
-- htop-inspired UI with Dracula color scheme
-- Keyboard shortcuts (F1, F2, F5, F9, F10)
-- Process termination capability
-- Configuration persistence (localStorage)
-- Configurable refresh interval (1000-5000ms)
-- Configurable top N processes (10-100)
-- Search/filter processes by name
-- SVG-based charts (no external dependencies)
-- Optimized performance (<25MB RAM, <1% CPU, <1s startup)
+### 追加
+- 初回リリース
+- CPU・メモリ使用率を含むプロセス監視
+- システムリソース監視（CPU / メモリ）
+- 60 秒履歴のリアルタイムチャート
+- 多言語対応（日本語・英語）
+- Dracula カラースキームの htop 風 UI
+- キーボードショートカット（F1, F2, F5, F9, F10）
+- プロセス終了機能
+- 設定の永続化（localStorage）
+- 更新間隔の設定（1000〜5000ms）
+- Top N プロセス表示件数の設定（10〜100）
+- プロセス名での検索・フィルタ
+- SVG ベースのチャート（外部依存なし）
+- 最適化された性能（RAM 25MB 未満、CPU 1% 未満、起動 1 秒未満）
 
-### Technical
-- Built with Tauri v2 + Rust + Svelte 5
-- Custom lightweight i18n system (~2KB)
-- Optimized Rust backend with sysinfo crate
-- Release build optimizations (LTO, strip, size optimization)
-- Block character progress bars (█░)
-- Monospace fonts for data clarity
+### 技術面
+- Tauri v2 + Rust + Svelte 5 で構築
+- 独自の軽量 i18n システム（約 2KB）
+- sysinfo crate を用いた Rust バックエンド最適化
+- リリースビルド最適化（LTO、strip、サイズ最適化）
+- ブロック文字プログレスバー（█░）
+- 可読性向上のための等幅フォント

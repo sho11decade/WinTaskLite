@@ -1,41 +1,41 @@
 # TaskLite
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/github/v/release/sho11decade/tasklite)](https://github.com/sho11decade/tasklite/releases)
+[![Release](https://img.shields.io/github/v/release/sho11decade/WinTaskLite)](https://github.com/sho11decade/WinTaskLite/releases)
 
-A lightweight, fast Windows system monitor built with Tauri v2 + Rust + Svelte. Inspired by **htop** and Linux system monitors, TaskLite is designed to be lighter and faster than Windows Task Manager.
+TaskLite は Tauri v2 + Rust + Svelte で構築された、軽量かつ高速な Windows 向けシステムモニターです。**htop** や Linux 系システムモニターに着想を得ており、Windows Task Manager より軽く速く動作することを目標にしています。
 
 ## ✨ Features
 
-### Beautiful htop-Inspired UI
-- **Dracula color scheme** - Eye-friendly dark theme
-- **Colored progress bars** - Dynamic status indicators
-- **Information-dense layout** - Maximized screen usage
-- **Keyboard shortcuts** - Full F-key support (F1-F10)
-- **Built-in help** - Press F1 for interactive help dialog
+### htop ライクな UI
+- **Dracula カラースキーム** - 目に優しいダークテーマ
+- **色付きプログレスバー** - 状況を直感的に可視化
+- **高密度レイアウト** - 画面を無駄なく活用
+- **キーボードショートカット** - F1-F10 をサポート
+- **内蔵ヘルプ** - F1 で対話型ヘルプダイアログを表示
 
-### Multilingual (i18n)
-- **Japanese** (日本語) - Primary
-- **English** - Full support
-- **Instant switching** - No reload required
+### 多言語対応（i18n）
+- **日本語** - メイン言語
+- **英語** - フルサポート
+- **即時切り替え** - リロード不要
 
-### Process Management
-- Real-time listing (top N sorted by CPU)
-- Visual CPU bars with color coding
-- Process termination with confirmation
-- Search & filter capability
-- Configurable display count (10-100 processes)
+### プロセス管理
+- リアルタイム一覧表示（CPU 降順の Top N）
+- 色分けされた CPU 使用率バー
+- 確認付きプロセス終了
+- 検索・フィルター機能
+- 表示件数の設定（10〜100 プロセス）
 
-### System Resources
-- CPU & memory monitoring
-- 60-second history charts
-- Gradient visualizations
-- Real-time meters in header
+### システムリソース
+- CPU / メモリ監視
+- 60 秒履歴チャート
+- グラデーション可視化
+- ヘッダーのリアルタイムメーター
 
-### Configuration
-- **Auto-save settings** - Language, interval, display count
-- **Adjustable refresh** - 1000-5000ms (F3/F4 shortcuts)
-- **Persistent preferences** - Saved to localStorage
+### 設定
+- **設定の自動保存** - 言語、更新間隔、表示件数
+- **更新間隔の調整** - 1000〜5000ms（F3/F4）
+- **設定の永続化** - localStorage に保存
 
 ## 📊 Performance
 
@@ -48,59 +48,59 @@ A lightweight, fast Windows system monitor built with Tauri v2 + Rust + Svelte. 
 
 ## 📦 Installation
 
-### Windows (Recommended)
-Download the latest [MSI installer](https://github.com/sho11decade/tasklite/releases/latest) and install.
+### Windows（推奨）
+最新の [MSI インストーラー](https://github.com/sho11decade/WinTaskLite/releases/latest) をダウンロードしてインストールしてください。
 
 ### Portable
-Download the standalone `.exe` from [releases](https://github.com/sho11decade/tasklite/releases) - no installation required.
+[releases](https://github.com/sho11decade/WinTaskLite/releases) から単体 `.exe` をダウンロードすれば、インストール不要で利用できます。
 
 ## 🚀 Development
 
 ```bash
-# Install dependencies
+# 依存関係をインストール
 npm install
 
-# Run in development mode
+# 開発モードで起動
 npm run tauri dev
 
-# Build for production
+# 本番ビルド
 npm run tauri build
 ```
 
 ## ⌨️ Keyboard Shortcuts
 
-- **F1** - Show help dialog
-- **F2** - Toggle Processes/Resources tabs
-- **F3** - Decrease refresh interval (faster)
-- **F4** - Increase refresh interval (slower)
-- **F5** - Refresh immediately
-- **F9** - Kill top process
-- **F10** - Quit application
+- **F1** - ヘルプダイアログを表示
+- **F2** - プロセス/リソースタブを切り替え
+- **F3** - 更新間隔を短くする（高速）
+- **F4** - 更新間隔を長くする（低負荷）
+- **F5** - 即時更新
+- **F9** - 最上位プロセスを終了
+- **F10** - アプリ終了
 
-For more details, press **F1** in the app or see [FAQ.md](FAQ.md).
+詳細はアプリ内で **F1** を押すか、[FAQ.md](FAQ.md) を参照してください。
 
 ## 🔧 Technology
 
-- **Backend**: Rust + sysinfo
-- **Frontend**: Svelte 5 + TypeScript
-- **Framework**: Tauri v2
-- **Charts**: Custom SVG (no dependencies)
-- **i18n**: Custom lightweight system (~2KB)
+- **バックエンド**: Rust + sysinfo
+- **フロントエンド**: Svelte 5 + TypeScript
+- **フレームワーク**: Tauri v2
+- **チャート**: カスタム SVG（外部依存なし）
+- **i18n**: 独自軽量実装（約 2KB）
 
 ## 📚 Documentation
 
-- [FAQ](FAQ.md) - Frequently Asked Questions
-- [Contributing](CONTRIBUTING.md) - Development guidelines
-- [Changelog](CHANGELOG.md) - Version history
-- [Design](design.md) - Original specification (Japanese)
+- [FAQ](FAQ.md) - よくある質問
+- [Contributing](CONTRIBUTING.md) - 開発ガイド
+- [Changelog](CHANGELOG.md) - 変更履歴
+- [Design](design.md) - 仕様ドキュメント
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+コントリビュート歓迎です。参加前に [CONTRIBUTING.md](CONTRIBUTING.md) をご確認ください。
 
 ## 📝 License
 
-MIT License - See [LICENSE](LICENSE) for details
+MIT License（詳細は [LICENSE](LICENSE) を参照）
 
 ## 👤 Author
 
@@ -108,6 +108,6 @@ RiceZero [@ricezero21](https://twitter.com/ricezero21)
 
 ## 🙏 Acknowledgments
 
-- Inspired by [htop](https://htop.dev/)
-- UI colors from [Dracula Theme](https://draculatheme.com/)
-- Built with [Tauri](https://tauri.app/), [Rust](https://www.rust-lang.org/), and [Svelte](https://svelte.dev/)
+- [htop](https://htop.dev/) にインスパイアされています
+- UI カラーは [Dracula Theme](https://draculatheme.com/) を利用しています
+- [Tauri](https://tauri.app/)、[Rust](https://www.rust-lang.org/)、[Svelte](https://svelte.dev/) で構築されています

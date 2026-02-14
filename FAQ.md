@@ -1,167 +1,167 @@
-# Frequently Asked Questions (FAQ)
+# よくある質問（FAQ）
 
-## General Questions
+## 一般
 
-### What is TaskLite?
-TaskLite is a lightweight, fast Windows system monitor inspired by htop. It provides real-time monitoring of processes, CPU usage, and memory usage with a beautiful, minimalist interface.
+### TaskLite とは何ですか？
+TaskLite は htop に着想を得た、軽量かつ高速な Windows 向けシステムモニターです。シンプルな UI で、プロセス・CPU 使用率・メモリ使用率をリアルタイムに確認できます。
 
-### Why TaskLite instead of Windows Task Manager?
-TaskLite is:
-- **Lighter**: Uses ~20MB RAM vs 40-60MB for Task Manager
-- **Faster**: Sub-second startup time
-- **More Efficient**: <1% CPU usage vs 2-5% for Task Manager
-- **Customizable**: Multilingual support, configurable refresh rates
-- **Keyboard-Driven**: Full keyboard shortcut support
+### Windows Task Manager ではなく TaskLite を使う理由は？
+TaskLite には次の特徴があります。
+- **軽量**: Task Manager の 40〜60MB に対して、約 20MB 程度
+- **高速**: サブ秒で起動
+- **低負荷**: Task Manager の 2〜5% に対して、CPU 使用率 1% 未満
+- **カスタマイズ性**: 多言語対応、更新間隔の調整
+- **キーボード操作重視**: ショートカットをフルサポート
 
-### Is TaskLite free?
-Yes, TaskLite is free and open-source software released under the MIT License.
+### TaskLite は無料ですか？
+はい。TaskLite は MIT License で公開されている無料のオープンソースソフトウェアです。
 
-## Installation & Setup
+## インストールとセットアップ
 
-### What are the system requirements?
-- Windows 10 (1809 or later) or Windows 11
-- ~20MB disk space
-- ~20MB RAM
-- x64 processor
+### 動作環境は？
+- Windows 10（1809 以降）または Windows 11
+- ディスク容量 約 20MB
+- メモリ 約 20MB
+- x64 プロセッサ
 
-### How do I install TaskLite?
-Download the MSI installer from the [Releases page](https://github.com/yourusername/tasklite/releases) and run it. No additional configuration needed.
+### TaskLite のインストール方法は？
+[Releases ページ](https://github.com/sho11decade/WinTaskLite/releases) から MSI インストーラーをダウンロードして実行してください。追加設定は不要です。
 
-### Can I run TaskLite without installing?
-Yes, you can download the standalone `.exe` file from the releases and run it directly without installation.
+### インストールせずに使えますか？
+はい。releases から単体 `.exe` をダウンロードすれば、インストールせずに実行できます。
 
-### Does TaskLite require administrator privileges?
-No, TaskLite runs as a normal user. However, terminating certain system processes may require administrator privileges.
+### 管理者権限は必要ですか？
+通常利用には不要です。ただし、一部のシステムプロセスを終了する場合は管理者権限が必要になることがあります。
 
-## Usage
+## 使い方
 
-### How do I kill a process?
-1. Find the process in the Processes tab
-2. Click the "Kill" button next to it, or
-3. Press F9 to kill the top process (highest CPU)
+### プロセスを終了するには？
+1. Processes タブで対象プロセスを探す
+2. 行の「Kill」ボタンをクリックする、または
+3. F9 で最上位プロセス（CPU 使用率最大）を終了する
 
-### Can I change the refresh interval?
-Yes! Use the slider in the settings, or press:
-- **F3** to decrease interval (faster updates)
-- **F4** to increase interval (slower updates, less CPU)
+### 更新間隔は変更できますか？
+はい。設定スライダー、または以下で変更できます。
+- **F3**: 間隔を短くする（更新頻度アップ）
+- **F4**: 間隔を長くする（更新頻度ダウン・低負荷）
 
-### What do the colors mean?
-- **Green**: Low usage (0-50%)
-- **Yellow**: Medium usage (50-80%)
-- **Red**: High usage (80-100%)
+### 色の意味は？
+- **緑**: 低使用率（0〜50%）
+- **黄**: 中使用率（50〜80%）
+- **赤**: 高使用率（80〜100%）
 
-### How do I switch languages?
-Click the language selector in the top-right corner and choose your preferred language (English or Japanese).
+### 言語を切り替えるには？
+右上の言語セレクターから、英語または日本語を選択してください。
 
-### What keyboard shortcuts are available?
-- **F1**: Show help dialog
-- **F2**: Toggle Processes/Resources tabs
-- **F3**: Faster updates (decrease interval)
-- **F4**: Slower updates (increase interval)
-- **F5**: Refresh immediately
-- **F9**: Kill top process
-- **F10**: Quit application
+### 利用できるキーボードショートカットは？
+- **F1**: ヘルプダイアログ表示
+- **F2**: Processes/Resources タブ切り替え
+- **F3**: 更新高速化（間隔短縮）
+- **F4**: 更新低速化（間隔延長）
+- **F5**: 即時更新
+- **F9**: 最上位プロセス終了
+- **F10**: アプリ終了
 
-## Troubleshooting
+## トラブルシューティング
 
-### TaskLite won't start
-1. Ensure you're running Windows 10 (1809+) or Windows 11
-2. Try running as administrator
-3. Check Windows Event Viewer for errors
-4. Reinstall TaskLite
+### TaskLite が起動しない
+1. Windows 10（1809+）または Windows 11 であることを確認
+2. 管理者として実行してみる
+3. Windows Event Viewer でエラーを確認
+4. TaskLite を再インストール
 
-### Process list is empty
-1. Press F5 to refresh
-2. Check if Windows is blocking the app (Windows Security)
-3. Try running as administrator
+### プロセス一覧が空になる
+1. F5 で更新
+2. Windows Security などでブロックされていないか確認
+3. 管理者として実行してみる
 
-### Can't kill certain processes
-Some system processes require administrator privileges. Try:
-1. Right-click TaskLite and "Run as administrator"
-2. Be cautious killing system processes - it may cause instability
+### 一部プロセスを終了できない
+システムプロセスには管理者権限が必要な場合があります。次を試してください。
+1. TaskLite を右クリックして「管理者として実行」
+2. システムプロセスの終了は不安定化の可能性があるため注意
 
-### High CPU usage from TaskLite itself
-1. Increase refresh interval using F4 or the settings slider
-2. Close the Resources tab charts if not needed
-3. Reduce the number of displayed processes (Top N setting)
+### TaskLite 自体の CPU 使用率が高い
+1. F4 または設定スライダーで更新間隔を長くする
+2. 不要なら Resources タブのチャート表示を避ける
+3. 表示プロセス数（Top N）を減らす
 
-### Language doesn't change
-Settings are saved to localStorage. If it doesn't persist:
-1. Check browser/WebView permissions
-2. Clear localStorage and restart TaskLite
+### 言語が切り替わらない
+設定は localStorage に保存されます。反映されない場合は以下を確認してください。
+1. ブラウザ/WebView の権限設定
+2. localStorage をクリアして TaskLite を再起動
 
-### Memory usage keeps growing
-TaskLite maintains 60 seconds of chart history. Memory usage should stabilize around 20-25MB. If it grows beyond 50MB, please report it as a bug.
+### メモリ使用量が増え続ける
+TaskLite は 60 秒分のチャート履歴を保持します。通常は 20〜25MB 前後で安定します。50MB を超えて増え続ける場合はバグとして報告してください。
 
-## Features
+## 機能
 
-### Does TaskLite have a dark mode?
-Yes! TaskLite uses the Dracula color scheme by default, which is a dark theme. Light mode may be added in a future release.
+### ダークモードはありますか？
+あります。TaskLite は既定で Dracula カラースキーム（ダークテーマ）を使用します。ライトモードは将来対応予定です。
 
-### Can I customize the colors?
-Not currently, but theme customization is planned for a future release.
+### 色をカスタマイズできますか？
+現在は未対応ですが、将来バージョンでテーマカスタマイズを計画しています。
 
-### Will TaskLite work on Linux or macOS?
-Currently TaskLite is Windows-only. Linux/macOS support may be added if there's demand.
+### Linux や macOS でも動きますか？
+現状は Windows 専用です。要望があれば Linux/macOS 対応を検討します。
 
-### Can I monitor remote computers?
-No, TaskLite only monitors the local system. Remote monitoring is not planned.
+### リモート PC を監視できますか？
+できません。TaskLite はローカルシステムのみを対象としています。リモート監視は予定していません。
 
-### Does TaskLite collect any data?
-No, TaskLite does not collect or send any telemetry data. All monitoring is local-only.
+### データ収集（テレメトリ）はありますか？
+ありません。TaskLite は監視データを収集・送信しません。すべてローカルで完結します。
 
-## Performance
+## パフォーマンス
 
-### Why does TaskLite use ~20MB of RAM?
-TaskLite includes:
-- WebView2 runtime (Chromium-based UI)
-- Rust backend
-- 60 seconds of chart history
-- UI components and styling
+### なぜ TaskLite は約 20MB の RAM を使うのですか？
+主に以下の要素を含むためです。
+- WebView2 ランタイム（Chromium ベース UI）
+- Rust バックエンド
+- 60 秒分のチャート履歴
+- UI コンポーネントとスタイル
 
-This is still significantly lighter than Task Manager.
+それでも Task Manager より軽量です。
 
-### How often does TaskLite update?
-Default is every 1 second (1000ms), configurable from 1000-5000ms.
+### 更新頻度はどれくらいですか？
+既定値は 1 秒（1000ms）で、1000〜5000ms の範囲で調整できます。
 
-### Does TaskLite impact system performance?
-Minimal impact: <1% CPU usage, ~20MB RAM. Even lighter than most background apps.
+### システムパフォーマンスへの影響は？
+影響は最小限です（CPU 使用率 1% 未満、RAM 約 20MB）。一般的な常駐アプリより軽量です。
 
-## Development
+## 開発
 
-### Can I contribute to TaskLite?
-Yes! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+### TaskLite に貢献できますか？
+はい。ガイドラインは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
 
-### How do I report bugs?
-Open an issue on [GitHub Issues](https://github.com/yourusername/tasklite/issues) with:
-- TaskLite version
-- Windows version
-- Steps to reproduce
-- Expected vs actual behavior
+### バグ報告はどうすればよいですか？
+[GitHub Issues](https://github.com/sho11decade/WinTaskLite/issues) に以下を添えて報告してください。
+- TaskLite のバージョン
+- Windows のバージョン
+- 再現手順
+- 期待結果と実際の結果
 
-### How do I request features?
-Open a feature request on GitHub Issues or Discussions.
+### 機能要望はどう出せますか？
+GitHub Issues または Discussions でリクエストしてください。
 
-### What tech stack does TaskLite use?
-- **Frontend**: Svelte 5 + TypeScript
-- **Backend**: Rust + Tauri v2
-- **System Info**: sysinfo crate
-- **Charts**: Custom SVG (no dependencies)
+### TaskLite の技術スタックは？
+- **フロントエンド**: Svelte 5 + TypeScript
+- **バックエンド**: Rust + Tauri v2
+- **システム情報取得**: sysinfo crate
+- **チャート**: カスタム SVG（外部依存なし）
 
-## Miscellaneous
+## その他
 
-### Why is it called "TaskLite"?
-It's a lightweight alternative to Task Manager, hence "Lite".
+### なぜ「TaskLite」という名前なのですか？
+Task Manager の軽量代替を目指しているため、「Lite」と名付けています。
 
-### Who made TaskLite?
-TaskLite is an open-source project. See the [contributors page](https://github.com/yourusername/tasklite/graphs/contributors).
+### TaskLite の作者は誰ですか？
+TaskLite はオープンソースプロジェクトです。詳しくは [contributors page](https://github.com/sho11decade/WinTaskLite/graphs/contributors) を参照してください。
 
-### Is there a mobile version?
-No, TaskLite is designed for Windows desktop systems.
+### モバイル版はありますか？
+ありません。TaskLite は Windows デスクトップ向けに設計されています。
 
-### Can I use TaskLite in a commercial environment?
-Yes, the MIT License allows commercial use.
+### 商用利用できますか？
+はい。MIT License により商用利用が可能です。
 
 ---
 
-**Still have questions?** Open a [discussion](https://github.com/yourusername/tasklite/discussions) on GitHub!
+**まだ疑問がありますか？** GitHub の [discussion](https://github.com/sho11decade/WinTaskLite/discussions) でご質問ください。
