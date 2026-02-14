@@ -6,6 +6,7 @@ export const translations = {
       resources: "リソース"
     },
     processTable: {
+      rank: "順位",
       pid: "PID",
       name: "プロセス名",
       cpu: "CPU%",
@@ -19,7 +20,17 @@ export const translations = {
       memory: "メモリ使用率",
       used: "使用中",
       total: "合計",
-      history: "履歴"
+      history: "履歴",
+      min: "最小",
+      avg: "平均",
+      max: "最大"
+    },
+    status: {
+      processes: "プロセス",
+      top: "トップ",
+      refresh: "更新",
+      updated: "更新時刻",
+      none: "なし"
     },
     settings: {
       interval: "更新間隔",
@@ -102,6 +113,7 @@ export const translations = {
       resources: "Resources"
     },
     processTable: {
+      rank: "Rank",
       pid: "PID",
       name: "Process Name",
       cpu: "CPU%",
@@ -115,7 +127,17 @@ export const translations = {
       memory: "Memory Usage",
       used: "Used",
       total: "Total",
-      history: "History"
+      history: "History",
+      min: "Min",
+      avg: "Avg",
+      max: "Max"
+    },
+    status: {
+      processes: "Processes",
+      top: "Top",
+      refresh: "Refresh",
+      updated: "Updated",
+      none: "None"
     },
     settings: {
       interval: "Interval",

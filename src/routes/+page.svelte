@@ -45,6 +45,7 @@
   let maxHistoryLength = 60;
   let showHelp = $state(false);
   let showAbout = $state(false);
+  let lastUpdatedAt = $state<Date | null>(null);
 
   function loadConfig() {
     try {
@@ -73,9 +74,7 @@
     try {
       loading = true;
       error = '';
-      console.log('Fetching processes with topN:', topN);
       processes = await invoke<Process[]>('get_processes', { topN });
-      console.log('Fetched processes:', processes.length);
     } catch (e) {
       error = String(e);
       console.error('Failed to fetch processes:', e);
@@ -86,11 +85,10 @@
 
   async function fetchSystemStats() {
     try {
-      console.log('Fetching system stats...');
       systemStats = await invoke<SystemStats>('get_system_stats');
-      console.log('System stats:', systemStats);
       cpuHistory = [...cpuHistory, systemStats.cpu_usage].slice(-maxHistoryLength);
       memoryHistory = [...memoryHistory, systemStats.memory_usage_percent].slice(-maxHistoryLength);
+      lastUpdatedAt = new Date();
     } catch (e) {
       console.error('Failed to fetch system stats:', e);
     }
@@ -182,12 +180,59 @@
     return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
   }
 
+  function formatUpdatedAt(value: Date | null): string {
+    if (!value) return '--:--:--';
+    return value.toLocaleTimeString([], { hour12: false });
+  }
+
+  function getSparklinePoints(values: number[], width: number = 240, height: number = 72): string {
+    if (values.length === 0) return '';
+    const maxIndex = Math.max(values.length - 1, 1);
+    return values
+      .map((value, index) => {
+        const x = (index / maxIndex) * width;
+        const clamped = Math.max(0, Math.min(100, value));
+        const y = height - (clamped / 100) * height;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+  }
+
+  function getSparklineArea(values: number[], width: number = 240, height: number = 72): string {
+    const points = getSparklinePoints(values, width, height);
+    if (!points) return '';
+    return `M0,${height} L${points.replace(/ /g, ' L')} L${width},${height} Z`;
+  }
+
+  function summarize(values: number[]) {
+    if (values.length === 0) {
+      return { min: 0, max: 0, avg: 0 };
+    }
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return { min, max, avg };
+  }
+
+  function getSeverityClass(value: number): string {
+    if (value >= 90) return 'critical';
+    if (value >= 70) return 'warning';
+    return '';
+  }
+
   let filteredProcesses = $derived(
     processes.filter(p => 
       p.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
       p.pid.toString().includes(searchFilter)
     )
   );
+  let topProcess = $derived(filteredProcesses[0] ?? null);
+  let cpuSummary = $derived(summarize(cpuHistory));
+  let memorySummary = $derived(summarize(memoryHistory));
+  let cpuSparkline = $derived(getSparklinePoints(cpuHistory));
+  let memorySparkline = $derived(getSparklinePoints(memoryHistory));
+  let cpuSparklineArea = $derived(getSparklineArea(cpuHistory));
+  let memorySparklineArea = $derived(getSparklineArea(memoryHistory));
 
   // Config保存用のeffect
   $effect(() => {
@@ -217,19 +262,14 @@
   });
 
   onMount(async () => {
-    console.log('Component mounted, initializing...');
     loadConfig();
-    console.log('Config loaded, lang:', lang, 'interval:', refreshInterval, 'topN:', topN);
-    // 初回データ取得を確実に実行
     try {
       await Promise.all([fetchProcesses(), fetchSystemStats()]);
-      console.log('Initial data fetched successfully');
     } catch (e) {
       console.error('Failed to initialize:', e);
     }
     startRefresh();
     isInitialized = true;
-    console.log('Initialization complete');
   });
 
   onDestroy(() => {
@@ -292,6 +332,13 @@
     </button>
   </nav>
 
+  <div class="status-strip">
+    <span>{t(lang, 'status.processes')}: {filteredProcesses.length}/{processes.length}</span>
+    <span>{t(lang, 'status.top')}: {topProcess ? `${topProcess.name} (${topProcess.cpu_usage.toFixed(1)}%)` : t(lang, 'status.none')}</span>
+    <span>{t(lang, 'status.refresh')}: {refreshInterval}{t(lang, 'settings.ms')}</span>
+    <span>{t(lang, 'status.updated')}: {formatUpdatedAt(lastUpdatedAt)}</span>
+  </div>
+
   <div class="controls">
     {#if activeTab === 'processes'}
       <input 
@@ -327,9 +374,15 @@
       {#if filteredProcesses.length === 0}
         <div class="message">{t(lang, 'messages.noProcesses')}</div>
       {:else}
+        <div class="top-process-card">
+          <span class="top-process-label">{t(lang, 'status.top')}</span>
+          <span class="top-process-name">{topProcess ? topProcess.name : t(lang, 'status.none')}</span>
+          <span class="top-process-value">{topProcess ? `${topProcess.cpu_usage.toFixed(1)}%` : '--'}</span>
+        </div>
         <table class="process-table">
           <thead>
             <tr>
+              <th>{t(lang, 'processTable.rank')}</th>
               <th>{t(lang, 'processTable.pid')}</th>
               <th>{t(lang, 'processTable.name')}</th>
               <th>{t(lang, 'processTable.cpu')}</th>
@@ -338,8 +391,9 @@
             </tr>
           </thead>
           <tbody>
-            {#each filteredProcesses as process (process.pid)}
-              <tr>
+            {#each filteredProcesses as process, index (process.pid)}
+              <tr class={getSeverityClass(process.cpu_usage)}>
+                <td class="rank">{index + 1}</td>
                 <td>{process.pid}</td>
                 <td class="process-name">{process.name}</td>
                 <td>
@@ -382,14 +436,18 @@
           </div>
           <div class="chart">
             <div class="chart-title">{t(lang, 'resources.history')}</div>
-            <div class="chart-bars">
-              {#each cpuHistory as value}
-                <div 
-                  class="chart-bar" 
-                  style="height: {value}%; background-color: {getBarColor(value)}"
-                  title="{value.toFixed(1)}%"
-                ></div>
-              {/each}
+            <svg class="sparkline" viewBox="0 0 240 72" preserveAspectRatio="none" aria-hidden="true">
+              {#if cpuSparklineArea}
+                <path class="sparkline-area cpu" d={cpuSparklineArea}></path>
+              {/if}
+              {#if cpuSparkline}
+                <polyline class="sparkline-line cpu" points={cpuSparkline}></polyline>
+              {/if}
+            </svg>
+            <div class="history-summary">
+              <span>{t(lang, 'resources.min')}: {cpuSummary.min.toFixed(1)}%</span>
+              <span>{t(lang, 'resources.avg')}: {cpuSummary.avg.toFixed(1)}%</span>
+              <span>{t(lang, 'resources.max')}: {cpuSummary.max.toFixed(1)}%</span>
             </div>
           </div>
         </div>
@@ -411,14 +469,18 @@
           </div>
           <div class="chart">
             <div class="chart-title">{t(lang, 'resources.history')}</div>
-            <div class="chart-bars">
-              {#each memoryHistory as value}
-                <div 
-                  class="chart-bar" 
-                  style="height: {value}%; background-color: {getBarColor(value)}"
-                  title="{value.toFixed(1)}%"
-                ></div>
-              {/each}
+            <svg class="sparkline" viewBox="0 0 240 72" preserveAspectRatio="none" aria-hidden="true">
+              {#if memorySparklineArea}
+                <path class="sparkline-area memory" d={memorySparklineArea}></path>
+              {/if}
+              {#if memorySparkline}
+                <polyline class="sparkline-line memory" points={memorySparkline}></polyline>
+              {/if}
+            </svg>
+            <div class="history-summary">
+              <span>{t(lang, 'resources.min')}: {memorySummary.min.toFixed(1)}%</span>
+              <span>{t(lang, 'resources.avg')}: {memorySummary.avg.toFixed(1)}%</span>
+              <span>{t(lang, 'resources.max')}: {memorySummary.max.toFixed(1)}%</span>
             </div>
           </div>
         </div>
@@ -572,6 +634,23 @@
     color: #bd93f9;
   }
 
+  .status-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0.45rem 1rem;
+    background-color: #282a36;
+    border-bottom: 1px solid #44475a;
+    color: #8be9fd;
+    font-size: 0.8rem;
+  }
+
+  .status-strip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .controls {
     display: flex;
     justify-content: space-between;
@@ -668,9 +747,38 @@
     font-size: 0.9rem;
   }
 
+  .top-process-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.6rem;
+    background: #282a36;
+    border: 1px solid #6272a4;
+    border-radius: 6px;
+  }
+
+  .top-process-label {
+    color: #8be9fd;
+    font-size: 0.8rem;
+  }
+
+  .top-process-name {
+    color: #50fa7b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .top-process-value {
+    color: #f1fa8c;
+    font-weight: 700;
+  }
+
   .process-table th {
     text-align: left;
-    padding: 0.75rem;
+    padding: 0.55rem 0.65rem;
     background-color: #44475a;
     color: #bd93f9;
     border-bottom: 2px solid #6272a4;
@@ -679,12 +787,25 @@
   }
 
   .process-table td {
-    padding: 0.75rem;
+    padding: 0.45rem 0.65rem;
     border-bottom: 1px solid #44475a;
   }
 
   .process-table tbody tr:hover {
     background-color: #44475a;
+  }
+
+  .process-table tbody tr.warning {
+    background-color: rgba(255, 184, 108, 0.08);
+  }
+
+  .process-table tbody tr.critical {
+    background-color: rgba(255, 85, 85, 0.12);
+  }
+
+  .rank {
+    color: #6272a4;
+    width: 40px;
   }
 
   .process-name {
@@ -784,22 +905,46 @@
     margin-bottom: 0.5rem;
   }
 
-  .chart-bars {
-    display: flex;
-    align-items: flex-end;
-    height: 100px;
-    gap: 2px;
+  .sparkline {
+    width: 100%;
+    height: 92px;
     background-color: #282a36;
     border: 1px solid #6272a4;
     border-radius: 4px;
-    padding: 0.5rem;
+    display: block;
   }
 
-  .chart-bar {
-    flex: 1;
-    min-width: 2px;
-    border-radius: 2px 2px 0 0;
-    transition: height 0.3s ease;
+  .sparkline-line {
+    fill: none;
+    stroke-width: 2;
+  }
+
+  .sparkline-line.cpu {
+    stroke: #50fa7b;
+  }
+
+  .sparkline-line.memory {
+    stroke: #8be9fd;
+  }
+
+  .sparkline-area {
+    opacity: 0.2;
+  }
+
+  .sparkline-area.cpu {
+    fill: #50fa7b;
+  }
+
+  .sparkline-area.memory {
+    fill: #8be9fd;
+  }
+
+  .history-summary {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: #f1fa8c;
   }
 
   footer {

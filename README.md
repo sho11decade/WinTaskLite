@@ -1,8 +1,7 @@
 # TaskLite
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/github/v/release/yourusername/tasklite)](https://github.com/yourusername/tasklite/releases)
-[![CI](https://github.com/yourusername/tasklite/workflows/CI/badge.svg)](https://github.com/yourusername/tasklite/actions)
+[![Release](https://img.shields.io/github/v/release/sho11decade/tasklite)](https://github.com/sho11decade/tasklite/releases)
 
 A lightweight, fast Windows system monitor built with Tauri v2 + Rust + Svelte. Inspired by **htop** and Linux system monitors, TaskLite is designed to be lighter and faster than Windows Task Manager.
 
@@ -50,10 +49,10 @@ A lightweight, fast Windows system monitor built with Tauri v2 + Rust + Svelte. 
 ## 📦 Installation
 
 ### Windows (Recommended)
-Download the latest [MSI installer](https://github.com/yourusername/tasklite/releases/latest) and install.
+Download the latest [MSI installer](https://github.com/sho11decade/tasklite/releases/latest) and install.
 
 ### Portable
-Download the standalone `.exe` from [releases](https://github.com/yourusername/tasklite/releases) - no installation required.
+Download the standalone `.exe` from [releases](https://github.com/sho11decade/tasklite/releases) - no installation required.
 
 ## 🚀 Development
 
@@ -105,16 +104,10 @@ MIT License - See [LICENSE](LICENSE) for details
 
 ## 👤 Author
 
-RiceZero
+RiceZero [@ricezero21](https://twitter.com/ricezero21)
 
 ## 🙏 Acknowledgments
 
 - Inspired by [htop](https://htop.dev/)
 - UI colors from [Dracula Theme](https://draculatheme.com/)
 - Built with [Tauri](https://tauri.app/), [Rust](https://www.rust-lang.org/), and [Svelte](https://svelte.dev/)
-
----
-
-**TaskLite** - タスク管理をもっと軽く、もっと美しく
-
-*Making system monitoring lighter, faster, and more beautiful*
